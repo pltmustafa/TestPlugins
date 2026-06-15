@@ -47,11 +47,6 @@
       <version>9.4</version>
       <scope>runtime</scope>
     </dependency>
-    <dependency>
-      <groupId>com.github.vidstige</groupId>
-      <artifactId>jadb</artifactId>
-      <version>v1.2.1</version>
-      <scope>runtime</scope>
-    </dependency>
+
   </dependencies>
 </project>
