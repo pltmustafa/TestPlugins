@@ -3,7 +3,7 @@
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <!-- do_not_remove: published-with-gradle-metadata -->
 <modelVersion>4.0.0</modelVersion>
-  <groupId>com.github.recloudstream.gradle</groupId>
+  <groupId>com.github.recloudstream</groupId>
   <artifactId>gradle</artifactId>
   <version>81b1d424d2</version>
   <name>recloudstream/gradle</name>
