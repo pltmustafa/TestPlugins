@@ -32,6 +32,7 @@ import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.getAndUnpack
 import com.lagradost.cloudstream3.utils.newExtractorLink
+import com.lagradost.cloudstream3.utils.loadExtractor
 import org.jsoup.Jsoup
 
 class DiziFilm : MainAPI() {
@@ -211,16 +212,22 @@ class DiziFilm : MainAPI() {
         
         if (data.contains("/film/")) {
             val movieJson = extractJsonFromNextJs(html, "movie")
-            Log.e("DiziFilm", "loadLinks movieJson extracted: ${movieJson != null}")
+            Log.d("DiziFilm", "loadLinks movieJson extracted: ${movieJson != null}")
             if (movieJson != null) {
                 try {
                     val movie = mapper.readValue<MoviePayload>(movieJson)
-                    Log.e("DiziFilm", "loadLinks movie parsed, parts count: ${movie.parts?.size}")
+                    Log.d("DiziFilm", "loadLinks movie parsed, parts count: ${movie.parts?.size}")
                     movie.parts?.forEach { part ->
-                        if (!part.url.isNullOrEmpty() && part.url.contains("vidlop.com")) {
-                            val name = "Vidlop ${part.language ?: ""} ${part.quality ?: ""}".trim()
-                            Log.e("DiziFilm", "Found Vidlop URL for movie: ${part.url} -> $name")
-                            vidlopUrls.add(part.url to name)
+                        if (!part.url.isNullOrEmpty()) {
+                            if (part.url.contains("vidlop.com")) {
+                                val name = "Vidlop ${part.language ?: ""} ${part.quality ?: ""}".trim()
+                                Log.d("DiziFilm", "Found Vidlop URL for movie: ${part.url} -> $name")
+                                vidlopUrls.add(part.url to name)
+                            } else {
+                                val name = "Server ${part.language ?: ""} ${part.quality ?: ""}".trim()
+                                Log.d("DiziFilm", "Found other URL for movie: ${part.url}")
+                                loadExtractor(part.url, "$mainUrl/", subtitleCallback, callback)
+                            }
                         }
                     }
                 } catch(e: Exception) {
@@ -230,16 +237,20 @@ class DiziFilm : MainAPI() {
         } else if (data.contains("/sezon-")) {
             // Episode page
             val episodeJson = extractJsonFromNextJs(html, "episode")
-            Log.e("DiziFilm", "loadLinks episodeJson extracted: ${episodeJson != null}")
+            Log.d("DiziFilm", "loadLinks episodeJson extracted: ${episodeJson != null}")
             if (episodeJson != null) {
                 try {
                     val ep = mapper.readValue<EpisodeItem>(episodeJson)
-                    Log.e("DiziFilm", "loadLinks episode parsed")
+                    Log.d("DiziFilm", "loadLinks episode parsed")
                     listOfNotNull(ep.embed_player_url_1, ep.embed_player_url_2, ep.embed_player_url_3)
-                        .filter { it.contains("vidlop.com") }
                         .forEachIndexed { index, url ->
-                            Log.e("DiziFilm", "Found Vidlop URL for episode: $url")
-                            vidlopUrls.add(url to "Vidlop Server ${index + 1}")
+                            if (url.contains("vidlop.com")) {
+                                Log.d("DiziFilm", "Found Vidlop URL for episode: $url")
+                                vidlopUrls.add(url to "Vidlop Server ${index + 1}")
+                            } else {
+                                Log.d("DiziFilm", "Found other URL for episode: $url")
+                                loadExtractor(url, "$mainUrl/", subtitleCallback, callback)
+                            }
                         }
                 } catch(e: Exception) {
                     Log.e("DiziFilm", "loadLinks episode parse error", e)
