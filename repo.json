@@ -1,0 +1,8 @@
+{
+  "name": "pltmustafaa cloudstream",
+  "description": "test",
+  "manifestVersion": 1,
+  "pluginLists": [
+    "https://raw.githubusercontent.com/pltmustafa/plt-stream/builds/plugins.json"
+  ]
+}
