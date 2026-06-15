@@ -7,6 +7,8 @@ buildscript {
     repositories {
         google()
         mavenCentral()
+        // Yerel Maven depomuz (Jitpack çökmelerine karşı)
+        maven { url = uri("$rootDir/local_maven") }
         // Shitpack repo which contains our tools and dependencies
         maven("https://jitpack.io")
     }
@@ -23,6 +25,8 @@ allprojects {
     repositories {
         google()
         mavenCentral()
+        // Yerel Maven depomuz
+        maven { url = uri("$rootDir/local_maven") }
         maven("https://jitpack.io")
     }
 }
