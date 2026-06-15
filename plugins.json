@@ -1,0 +1,475 @@
+[
+    {
+        "iconUrl": "https://img.icons8.com/color/512/cloud-sync.png",
+        "fileHash": "sha256-7676ba6ec5df60df0b9fb67b37224642de03eb7f06a4d31ea401a2d8a4e02910",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/pltmustafa/plt-stream",
+        "fileSize": 125794,
+        "status": 1,
+        "language": "tr",
+        "authors": [
+            "pltmustafa"
+        ],
+        "tvTypes": [
+            "All"
+        ],
+        "version": 4,
+        "internalName": "Cloud-Sync",
+        "description": "Cloud sync plugin for Cloudstream - syncs bookmarks, settings, extensions, watch history across devices",
+        "url": "https://raw.githubusercontent.com/pltmustafa/plt-stream/builds/Cloud-Sync.cs3",
+        "name": "Cloud-Sync"
+    },
+    {
+        "iconUrl": "https://www.google.com/s2/favicons?domain=dizibal.com&sz=128",
+        "fileHash": "sha256-3eb7e1187a81ef4a2d3b40ae1825b65407e8a28d87663b91862b3ee16f41ff53",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/pltmustafa/plt-stream",
+        "fileSize": 43511,
+        "status": 1,
+        "language": "tr",
+        "authors": [
+            "pltmustafa"
+        ],
+        "tvTypes": [
+            "Movie",
+            "TvSeries",
+            "Anime"
+        ],
+        "version": 5,
+        "internalName": "DiziBal",
+        "description": "En pop\u00fcler yabanc\u0131 dizileri yeni b\u00f6l\u00fcmleriyle takip edin. HBO, Netflix, Apple TV+ yap\u0131mlar\u0131 T\u00fcrk\u00e7e altyaz\u0131l\u0131 olarak dizibaL'da!",
+        "url": "https://raw.githubusercontent.com/pltmustafa/plt-stream/builds/DiziBal.cs3",
+        "name": "DiziBal"
+    },
+    {
+        "iconUrl": "https://www.google.com/s2/favicons?domain=www.dizibox.live&sz=%size%",
+        "fileHash": "sha256-c715d6092e43109909da986c5a6c6977b16220d5e6d0a825c1be547fb427bc08",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/pltmustafa/plt-stream",
+        "fileSize": 35928,
+        "status": 1,
+        "language": "tr",
+        "authors": [
+            "keyiflerolsun",
+            "pltmustafa"
+        ],
+        "tvTypes": [
+            "TvSeries"
+        ],
+        "version": 28,
+        "internalName": "DiziBox",
+        "description": "Yabanc\u0131 Dizi izle, T\u00fcm yabanc\u0131 dizilerin yeni ve eski sezonlar\u0131n\u0131 full hd izleyebilece\u011finiz elit site.",
+        "url": "https://raw.githubusercontent.com/pltmustafa/plt-stream/builds/DiziBox.cs3",
+        "name": "DiziBox"
+    },
+    {
+        "iconUrl": "https://www.google.com/s2/favicons?domain=dizifilm.life&sz=%size%",
+        "fileHash": "sha256-624b1936e345c83b23dca7534ca0e0e1b699caba8794ee40aff23e673d00fe69",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/pltmustafa/plt-stream",
+        "fileSize": 43600,
+        "status": 1,
+        "language": "tr",
+        "authors": [
+            "pltmustafa"
+        ],
+        "tvTypes": [
+            "Movie",
+            "TvSeries"
+        ],
+        "version": 6,
+        "internalName": "DiziFilm",
+        "description": "En yeni filmleri ve dizileri HD kalitede, T\u00fcrk\u00e7e altyaz\u0131l\u0131 ve dublajl\u0131 olarak izleyin.",
+        "url": "https://raw.githubusercontent.com/pltmustafa/plt-stream/builds/DiziFilm.cs3",
+        "name": "DiziFilm"
+    },
+    {
+        "iconUrl": "https://www.google.com/s2/favicons?domain=dizilla.club&sz=%size%",
+        "fileHash": "sha256-c2dd9039b090c96299e00dc7b951e48dd65c0301cfaa278463d9c97b7e5919f2",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/pltmustafa/plt-stream",
+        "fileSize": 48322,
+        "status": 1,
+        "language": "tr",
+        "authors": [
+            "keyiflerolsun",
+            "pltmustafa"
+        ],
+        "tvTypes": [
+            "TvSeries"
+        ],
+        "version": 97,
+        "internalName": "Dizilla",
+        "description": "Dizilla t\u00fcm yabanc\u0131 dizileri \u00fccretsiz olarak T\u00fcrk\u00e7e Dublaj ve altyaz\u0131l\u0131 se\u00e7enekleri ile 1080P kalite izleyebilece\u011finiz yeni nesil yabanc\u0131 dizi izleme siteniz.",
+        "url": "https://raw.githubusercontent.com/pltmustafa/plt-stream/builds/Dizilla.cs3",
+        "name": "Dizilla"
+    },
+    {
+        "iconUrl": "https://www.google.com/s2/favicons?domain=www.dizimom.plus&sz=%size%",
+        "fileHash": "sha256-2f185d5e1199b34b756ef490ee6fcd965b3d77534a3a028894266ea66a91133f",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/pltmustafa/plt-stream",
+        "fileSize": 46741,
+        "status": 1,
+        "language": "tr",
+        "authors": [
+            "keyiflerolsun",
+            "pltmustafa"
+        ],
+        "tvTypes": [
+            "TvSeries"
+        ],
+        "version": 48,
+        "internalName": "DiziMom",
+        "description": "Binlerce yerli yabanc\u0131 dizi ar\u015fivi, t\u00fcm sezonlar, kesintisiz b\u00f6l\u00fcmler. Sadece dizi izle, Dizimom heryerde seninle!",
+        "url": "https://raw.githubusercontent.com/pltmustafa/plt-stream/builds/DiziMom.cs3",
+        "name": "DiziMom"
+    },
+    {
+        "iconUrl": "https://www.google.com/s2/favicons?domain=https://dizipal952.com&sz=%size%",
+        "fileHash": "sha256-24424eba8e841b2feb8e029063b254cfc3c7adc4e56b03061180ee19665969e3",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/pltmustafa/plt-stream",
+        "fileSize": 39597,
+        "status": 1,
+        "language": "tr",
+        "authors": [
+            "keyiflerolsun",
+            "muratcesmecioglu",
+            "pltmustafa"
+        ],
+        "tvTypes": [
+            "TvSeries",
+            "Movie"
+        ],
+        "version": 98,
+        "internalName": "DiziPal",
+        "description": "en yeni dizileri g\u00fcvenli ve h\u0131zl\u0131 \u015fekilde sunar.",
+        "url": "https://raw.githubusercontent.com/pltmustafa/plt-stream/builds/DiziPal.cs3",
+        "name": "DiziPal"
+    },
+    {
+        "iconUrl": "https://cdn.diziyou6.com/wp-content/uploads/2020/04/diziyou-favicon.png",
+        "fileHash": "sha256-88c96d5dc5655483cfa4be0bf647cd3e13163c36622dc718e4531c0858c14a6c",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/pltmustafa/plt-stream",
+        "fileSize": 30233,
+        "status": 1,
+        "language": "tr",
+        "authors": [
+            "keyiflerolsun",
+            "pltmustafa"
+        ],
+        "tvTypes": [
+            "TvSeries"
+        ],
+        "version": 30,
+        "internalName": "DiziYou",
+        "description": "Diziyou en kaliteli T\u00fcrk\u00e7e dublaj ve altyaz\u0131l\u0131 yabanc\u0131 dizi izleme sitesidir. G\u00fcncel ve efsanevi dizileri 1080p Full HD kalitede izlemek i\u00e7in hemen t\u0131kla!",
+        "url": "https://raw.githubusercontent.com/pltmustafa/plt-stream/builds/DiziYou.cs3",
+        "name": "DiziYou"
+    },
+    {
+        "iconUrl": "https://www.google.com/s2/favicons?domain=filmekseni.nl&sz=%size%",
+        "fileHash": "sha256-fbb0b15d42718bd4ff2590546daf4889cd2199d4f725ac8f57ec6d03ef3a35ab",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/pltmustafa/plt-stream",
+        "fileSize": 34243,
+        "status": 1,
+        "language": "tr",
+        "authors": [
+            "pltmustafa"
+        ],
+        "tvTypes": [
+            "Movie",
+            "TvSeries"
+        ],
+        "version": 6,
+        "internalName": "Filmekseni",
+        "description": "Vizyondaki, en g\u00fcncel ve en yeni filmleri full hd kalitesinde t\u00fcrk\u00e7e dublaj ve altyaz\u0131 se\u00e7enekleriyle 1080p olarak izleyebilece\u011finiz...",
+        "url": "https://raw.githubusercontent.com/pltmustafa/plt-stream/builds/Filmekseni.cs3",
+        "name": "Filmekseni"
+    },
+    {
+        "iconUrl": "https://www.google.com/s2/favicons?domain=www.filmmodu17.com&sz=%size%",
+        "fileHash": "sha256-504438079792a46cd31f1fc8a49ecb2a5734e6097a214e9b3c6deeeb64cbbb62",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/pltmustafa/plt-stream",
+        "fileSize": 28579,
+        "status": 1,
+        "language": "tr",
+        "authors": [
+            "keyiflerolsun",
+            "pltmustafa"
+        ],
+        "tvTypes": [
+            "Movie"
+        ],
+        "version": 24,
+        "internalName": "FilmModu",
+        "description": "Film modun geldiyse y\u00fcksek kalitede en yeni filmleri izle, 1080p izleyebilece\u011finiz reklamsiz film sitesi.",
+        "url": "https://raw.githubusercontent.com/pltmustafa/plt-stream/builds/FilmModu.cs3",
+        "name": "FilmModu"
+    },
+    {
+        "iconUrl": "https://www.google.com/s2/favicons?domain=fullhdfilm.us&sz=%size%",
+        "fileHash": "sha256-c16a73fe356413a604db34ae3240746b6b12fdd61f5e4c3e79dadb7610e1cb79",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/pltmustafa/plt-stream",
+        "fileSize": 39224,
+        "status": 1,
+        "language": "tr",
+        "authors": [
+            "keyiflerolsun",
+            "pltmustafa"
+        ],
+        "tvTypes": [
+            "Movie",
+            "TvSeries"
+        ],
+        "version": 42,
+        "internalName": "FullHDFilm",
+        "description": "Fullhdfilm ile en yeni vizyon filmler Full HD ve kesintisiz film sizlerle. \u00d6zg\u00fcn film ar\u015fivimizle en \u00fcst\u00fcn kaliteli film izle keyfini sunuyoruz.",
+        "url": "https://raw.githubusercontent.com/pltmustafa/plt-stream/builds/FullHDFilm.cs3",
+        "name": "FullHDFilm"
+    },
+    {
+        "iconUrl": "https://www.google.com/s2/favicons?domain=www.fullhdfilmizlesene.de&sz=%size%",
+        "fileHash": "sha256-4190987e5c460e18537025af0fc60325b3527ca86cda2f92e83ab148ca7922fd",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/pltmustafa/plt-stream",
+        "fileSize": 51041,
+        "status": 1,
+        "language": "tr",
+        "authors": [
+            "keyiflerolsun",
+            "pltmustafa"
+        ],
+        "tvTypes": [
+            "Movie"
+        ],
+        "version": 34,
+        "internalName": "FullHDFilmizlesene",
+        "description": "Sinema zevkini evinize kadar getirdik. T\u00fcrkiye'nin lider Film sitesinde, en yeni filmleri Full HD izleyin.",
+        "url": "https://raw.githubusercontent.com/pltmustafa/plt-stream/builds/FullHDFilmizlesene.cs3",
+        "name": "FullHDFilmizlesene"
+    },
+    {
+        "iconUrl": "https://www.google.com/s2/favicons?domain=hdfilmcehennemi.com&sz=%size%",
+        "fileHash": "sha256-81c2a8b21f036118e4d3035a2cbac4463d382f7c85d4bce64dd174c0f3faa5e3",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/pltmustafa/plt-stream",
+        "fileSize": 43665,
+        "status": 1,
+        "language": "tr",
+        "authors": [
+            "hexated",
+            "keyiflerolsun",
+            "pltmustafa"
+        ],
+        "tvTypes": [
+            "Movie",
+            "TvSeries"
+        ],
+        "version": 32,
+        "internalName": "HDFilmCehennemi",
+        "description": "T\u00fcrkiye'nin en h\u0131zl\u0131 hd film izleme sitesi",
+        "url": "https://raw.githubusercontent.com/pltmustafa/plt-stream/builds/HDFilmCehennemi.cs3",
+        "name": "HDFilmCehennemi"
+    },
+    {
+        "iconUrl": "https://www.google.com/s2/favicons?domain=hdfilmizle.to&sz=%size%",
+        "fileHash": "sha256-c11ac8f5e0f0b33f6e91a3b1fe3f366d9f48fab46140f1272a3424b59cd2fec9",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/pltmustafa/plt-stream",
+        "fileSize": 46949,
+        "status": 1,
+        "language": "tr",
+        "authors": [
+            "nikyokki, pltmustafa"
+        ],
+        "tvTypes": [
+            "Movie",
+            "TvSeries"
+        ],
+        "version": 11,
+        "internalName": "HDFilmIzle",
+        "description": "HDFilmizle ile Full HD izle, 1080p kalitede Yerli ve Yabanc\u0131 filmlerle T\u00fcrk\u00e7e dublaj veya Altyaz\u0131 olarak kesintisiz film izlemenin tad\u0131n\u0131 \u00e7\u0131kar\u0131n.",
+        "url": "https://raw.githubusercontent.com/pltmustafa/plt-stream/builds/HDFilmIzle.cs3",
+        "name": "HDFilmIzle"
+    },
+    {
+        "iconUrl": "https://watchbuddy.tv/static/home/ico/225x225bb.png",
+        "fileHash": "sha256-0c8c97d23b0b14d648a38c62e90b7ff9dfa34e471ea9c769f9bccd1b4a952157",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/pltmustafa/plt-stream",
+        "fileSize": 48628,
+        "status": 3,
+        "language": "tr",
+        "authors": [
+            "pltmustafa"
+        ],
+        "tvTypes": [
+            "Movie",
+            "TvSeries",
+            "Anime"
+        ],
+        "version": 12,
+        "internalName": "KekikStream",
+        "description": "WatchBuddy api ile film ve dizi izleme eklentisi.",
+        "url": "https://raw.githubusercontent.com/pltmustafa/plt-stream/builds/KekikStream.cs3",
+        "name": "KekikStream"
+    },
+    {
+        "iconUrl": "https://raw.githubusercontent.com/pltmustafa/plt-stream/master/icon.png",
+        "fileHash": "sha256-a38d0ae1d91d85704ee96cd5e2536128fb434fcbf37427a77009f9c770035e7b",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/pltmustafa/plt-stream",
+        "fileSize": 276653,
+        "status": 1,
+        "language": "tr",
+        "authors": [
+            "pltmustafa"
+        ],
+        "tvTypes": [
+            "TvSeries",
+            "Movie",
+            "Anime"
+        ],
+        "version": 7,
+        "internalName": "plt-stream",
+        "description": "plt-stream - Birden fazla siteden i\u00e7erik sa\u011flayan hub g\u00f6revi g\u00f6ren bir eklenti",
+        "url": "https://raw.githubusercontent.com/pltmustafa/plt-stream/builds/plt-stream.cs3",
+        "name": "plt-stream"
+    },
+    {
+        "iconUrl": "https://www.google.com/s2/favicons?domain=selcukflix.com&sz=%size%",
+        "fileHash": "sha256-c110c5e5a176831ea9fd3a59ef43b52f0ad59dadd03e3c55831d01e7c4d57d69",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/pltmustafa/plt-stream",
+        "fileSize": 45392,
+        "status": 1,
+        "language": "tr",
+        "authors": [
+            "nikyokki, pltmustafa"
+        ],
+        "tvTypes": [
+            "Movie",
+            "TvSeries"
+        ],
+        "version": 10,
+        "internalName": "SelcukFlix",
+        "description": "Selcukflix'te her t\u00fcrden en yeni ve en pop\u00fcler dizi ve filmleri izlemenin keyfini \u00e7\u0131kar\u0131n. Aksiyondan romanti\u011fe, bilim kurgudan dramaya, geni\u015f k\u00fct\u00fcphanemizde herkes i\u00e7in bir \u015fey var.",
+        "url": "https://raw.githubusercontent.com/pltmustafa/plt-stream/builds/SelcukFlix.cs3",
+        "name": "SelcukFlix"
+    },
+    {
+        "iconUrl": "https://www.google.com/s2/favicons?domain=www.setfilmizle.nl&sz=%size%",
+        "fileHash": "sha256-6be3b15c4a764e6427b2a80ff742fcef5abcf8037fd15bca264d5afc956315aa",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/pltmustafa/plt-stream",
+        "fileSize": 36018,
+        "status": 1,
+        "language": "tr",
+        "authors": [
+            "keyiflerolsun",
+            "pltmustafa"
+        ],
+        "tvTypes": [
+            "Movie",
+            "TvSeries"
+        ],
+        "version": 33,
+        "internalName": "SetFilmIzle",
+        "description": "Setfilmizle sitemizde, donma ya\u015famadan T\u00fcrk\u00e7e dublaj ve altyaz\u0131l\u0131 filmleri ile dizileri muhte\u015fem 1080p full HD kalitesinde izleyebilirsiniz.",
+        "url": "https://raw.githubusercontent.com/pltmustafa/plt-stream/builds/SetFilmIzle.cs3",
+        "name": "SetFilmIzle"
+    },
+    {
+        "iconUrl": "https://www.google.com/s2/favicons?domain=sezonlukdizi6.com&sz=%size%",
+        "fileHash": "sha256-9bd2a7d5ed772796ea0f3d67e882dbbb7fac3474255b768c6a94e95bd90e9fc9",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/pltmustafa/plt-stream",
+        "fileSize": 34802,
+        "status": 1,
+        "language": "tr",
+        "authors": [
+            "keyiflerolsun",
+            "JustRelaxable",
+            "pltmustafa"
+        ],
+        "tvTypes": [
+            "TvSeries"
+        ],
+        "version": 14,
+        "internalName": "SezonlukDizi",
+        "description": "G\u00fcncel ve eski dizileri en iyi g\u00f6r\u00fcnt\u00fc kalitesiyle bulabilece\u011finiz yabanc\u0131 dizi izleme siteniz.",
+        "url": "https://raw.githubusercontent.com/pltmustafa/plt-stream/builds/SezonlukDizi.cs3",
+        "name": "SezonlukDizi"
+    },
+    {
+        "iconUrl": "https://play-lh.googleusercontent.com/brwGNmr7IjA_MKk_TTPs0va10hdKE_bD_a1lnKoiMuCayW98EHpRv55edA6aEoJlmwfX",
+        "fileHash": "sha256-66650f18aa20a43edcfc8d05f5810736898c0a3d2ee41f503e8c5a69708aec4e",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/pltmustafa/plt-stream",
+        "fileSize": 37237,
+        "status": 1,
+        "language": "tr",
+        "authors": [
+            "patr0n",
+            "keyiflerolsun",
+            "pltmustafa"
+        ],
+        "tvTypes": [
+            "Movie",
+            "TvSeries",
+            "Anime"
+        ],
+        "version": 7,
+        "internalName": "Sinewix",
+        "description": "Sinewix | \u00dccretsiz Film - Dizi - Anime \u0130zleme Uygulamas\u0131",
+        "url": "https://raw.githubusercontent.com/pltmustafa/plt-stream/builds/Sinewix.cs3",
+        "name": "Sinewix"
+    },
+    {
+        "iconUrl": "https://www.google.com/s2/favicons?domain=webteizle2.com&sz=%size%",
+        "fileHash": "sha256-a33ac6e282b22a8c7c842033192c891272e435c26f2055d70296051a40bd0c6f",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/pltmustafa/plt-stream",
+        "fileSize": 36451,
+        "status": 1,
+        "language": "tr",
+        "authors": [
+            "keyiflerolsun",
+            "pltmustafa"
+        ],
+        "tvTypes": [
+            "Movie"
+        ],
+        "version": 23,
+        "internalName": "WebteIzle",
+        "description": "Her t\u00fcrl\u00fc filmi ister dublaj ister altyaz\u0131l\u0131, en kaliteli bir \u015fekilde izleyebilece\u011finiz ar\u015fivi en geni\u015f ger\u00e7ek film izleme siteniz.",
+        "url": "https://raw.githubusercontent.com/pltmustafa/plt-stream/builds/WebteIzle.cs3",
+        "name": "WebteIzle"
+    },
+    {
+        "iconUrl": "https://www.google.com/s2/favicons?domain=yabancidizi.tv&sz=%size%",
+        "fileHash": "sha256-0d813df0ff52054571c3b08fd4bc71f33eb6bc5b4cdb9532b7cae08a89c0571d",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/pltmustafa/plt-stream",
+        "fileSize": 67854,
+        "status": 1,
+        "language": "tr",
+        "authors": [
+            "nikyokki, pltmustafa"
+        ],
+        "tvTypes": [
+            "TvSeries"
+        ],
+        "version": 12,
+        "internalName": "YabanciDizi",
+        "description": "Son \u00e7\u0131kan yabanc\u0131 dizi ve filmleri yabancidizi' de izle. En yeni yabanc\u0131 film ve diziler, t\u00fcrk\u00e7e altyaz\u0131l\u0131 yada dublaj olarak 1080p kalitesinde hd izle.",
+        "url": "https://raw.githubusercontent.com/pltmustafa/plt-stream/builds/YabanciDizi.cs3",
+        "name": "YabanciDizi"
+    }
+]
