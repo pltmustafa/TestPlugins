@@ -55,66 +55,75 @@ open class VidRameExtractor : ExtractorApi() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ) {
-        Log.d("VidEx", url)
-        val document = app.get(
-            url,
-            headers = mapOf("User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:136.0) Gecko/20100101 Firefox/136.0",
-                "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                "Accept-Language" to "en-US,en;q=0.5"),
-            referer = referer
-        ).document
-        Log.d("VidEx", "Document: $document")
-
-        val script = document.select("script").find { it.data().contains("sources:") }?.data() ?: ""
-        Log.d("VidEx", "Script: $script")
-
-
-        val regex = """("file": )EE\.dd\(".*?"\)""".toRegex()
-        val videoData = script.substringAfter("sources: [")
-            .substringBefore("],").addMarks("file").addMarks("type")
-        Log.d("VidEx", videoData)
-        var output = videoData.replace(regex) { matchResult ->
-            "${matchResult.groupValues[1]}\"${matchResult.value.substringAfter(matchResult.groupValues[1])}\""
-        }
-        output = output.addMarks("type").replace("\r", "").replace("\n", "")
-            .replace("(\"", "(").replace("\")", ")")
-        val subData =
-            script.substringAfter("configs.tracks = ").substringBefore(";").addMarks("file")
-                .addMarks("label").addMarks("kind")
-        val objectMapper = ObjectMapper().registerModule(KotlinModule.Builder().build())
-        val captions: List<SubSource>? = subData.let { objectMapper.readValue(it) }
-        if (captions != null) {
-            tryParseJson<List<SubSource>>(subData)
-                ?.filter { it.kind == "captions" }?.map {
-                    subtitleCallback.invoke(
-                        SubtitleFile(
-                            it.label.toString(),
-                            fixUrl(it.file.toString())
-                        )
-                    )
-                }
-        }
-        tryParseJson<Source>(output)?.file?.let { m3uLink ->
-            var video = m3uLink?.substringAfter(".dd(")?.substringBefore(")")
-            video = video?.replace("-", "+")?.replace("_", "/")
-            while (video!!.length % 4 != 0) {
-                video += "="
-            }
-            val a = String(Base64.decode(video, Base64.DEFAULT))
-            val b = rr(a)
-            val sonm3uLink = rs(b)
-            Log.d("VidEx", "SonM3u : $sonm3uLink")
-            callback.invoke(
-                newExtractorLink(
-                    source = this.name,
-                    name = this.name,
-                    url = sonm3uLink,
-                    ExtractorLinkType.M3U8
-                ) {
-                    this.referer = "$mainUrl/"
-                    this.quality = Qualities.Unknown.value
-                }
+        Log.d("VidEx", "Starting getUrl for $url")
+        try {
+            val response = app.get(
+                url,
+                referer = referer,
+                timeout = 30L
             )
+            Log.d("VidEx", "Response Code: ${response.code}")
+            Log.d("VidEx", "Response Headers: ${response.headers}")
+            val document = response.document
+            
+            val htmlPreview = document.html().take(300)
+            Log.d("VidEx", "HTML Preview: $htmlPreview")
+
+            val script = document.select("script").find { it.data().contains("sources:") }?.data() ?: ""
+            Log.d("VidEx", "Script length: ${script.length}")
+
+            val regex = """("file": )EE\.dd\(".*?"\)""".toRegex()
+            val videoData = script.substringAfter("sources: [")
+                .substringBefore("],").addMarks("file").addMarks("type")
+            
+            var output = videoData.replace(regex) { matchResult ->
+                "${matchResult.groupValues[1]}\"${matchResult.value.substringAfter(matchResult.groupValues[1])}\""
+            }
+            output = output.addMarks("type").replace("\r", "").replace("\n", "")
+                .replace("(\"", "(").replace("\")", ")")
+                
+            val subData =
+                script.substringAfter("configs.tracks = ").substringBefore(";").addMarks("file")
+                    .addMarks("label").addMarks("kind")
+                    
+            val objectMapper = ObjectMapper().registerModule(KotlinModule.Builder().build())
+            val captions: List<SubSource>? = subData.let { objectMapper.readValue(it) }
+            if (captions != null) {
+                tryParseJson<List<SubSource>>(subData)
+                    ?.filter { it.kind == "captions" }?.map {
+                        subtitleCallback.invoke(
+                            SubtitleFile(
+                                it.label.toString(),
+                                fixUrl(it.file.toString())
+                            )
+                        )
+                    }
+            }
+            tryParseJson<Source>(output)?.file?.let { m3uLink ->
+                var video = m3uLink.substringAfter(".dd(").substringBefore(")")
+                video = video.replace("-", "+").replace("_", "/")
+                while (video.length % 4 != 0) {
+                    video += "="
+                }
+                val a = String(Base64.decode(video, Base64.DEFAULT))
+                val b = rr(a)
+                val sonm3uLink = rs(b)
+                Log.d("VidEx", "SonM3u : $sonm3uLink")
+                callback.invoke(
+                    newExtractorLink(
+                        source = this.name,
+                        name = this.name,
+                        url = sonm3uLink,
+                        ExtractorLinkType.M3U8
+                    ) {
+                        this.referer = "$mainUrl/"
+                        this.quality = Qualities.Unknown.value
+                    }
+                )
+            }
+        } catch (e: Exception) {
+            Log.e("VidEx", "Error in VidRameExtractor: ${e.message}")
+            e.printStackTrace()
         }
     }
 }

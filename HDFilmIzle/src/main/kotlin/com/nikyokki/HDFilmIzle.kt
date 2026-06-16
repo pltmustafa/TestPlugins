@@ -190,7 +190,7 @@ class HDFilmIzle : MainAPI() {
                 }
             }
             
-            return newTvSeriesLoadResponse(title, finalUrl, TvType.TvSeries, episodes) {
+            return newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
                 this.posterUrl = poster
                 this.year = year
                 this.plot = description
@@ -202,7 +202,7 @@ class HDFilmIzle : MainAPI() {
             }
         }
 
-        return newMovieLoadResponse(title, finalUrl, TvType.Movie, finalUrl) {
+        return newMovieLoadResponse(title, url, TvType.Movie, url) {
             this.posterUrl = poster
             this.year = year
             this.plot = description

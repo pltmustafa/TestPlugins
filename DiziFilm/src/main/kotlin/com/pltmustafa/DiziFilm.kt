@@ -330,9 +330,6 @@ class DiziFilm : MainAPI() {
                         val subUrl = files[i]
                         val subLang = labels.getOrNull(i) ?: "Türkçe"
                         Log.e("DiziFilm", "Found subtitle: $subLang -> $subUrl")
-                        // Sometimes Vidlop subtitles are images (thumbnails) masked in the 'tracks' array. We only want .vtt or .srt, or perhaps any valid subtitle URL. Let's add them all but log them.
-                        // Wait, looking at the unpacked script, the subtitle file URL is .jpg because it's a thumbnail sprite! Vidlop puts thumbnails in tracks too!
-                        // We must only extract subtitles that are text files, or just check the 'kind' field.
                         if (subUrl.endsWith(".vtt") || subUrl.endsWith(".srt") || subUrl.endsWith(".txt")) {
                             subtitleCallback.invoke(SubtitleFile(subLang, subUrl.replace("\\/", "/")))
                         }
@@ -349,7 +346,6 @@ class DiziFilm : MainAPI() {
         return true
     }
     
-    // Utilities to extract JSON from Next.js RSC Push payload
     private fun extractJsonFromNextJs(html: String, key: String): String? {
         return extractJsonByKey(html, key, false)
     }
