@@ -153,7 +153,9 @@ class WebteIzle : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         Log.d("WBTI", "data » $data")
-        val document = app.get(data).document
+        val response = app.get(data)
+        val document = response.document
+        val finalUrl = response.url.substringBefore("/hakkinda").substringBefore("/izle")
 
         val filmId = document.selectFirst("button#wip")?.attr("data-id") ?: return false
         Log.d("WBTI", "filmId » $filmId")
@@ -171,7 +173,7 @@ class WebteIzle : MainAPI() {
             val dilAd = if (it == "0") "Dublaj" else "Altyazı"
 
             val playerApi = app.post(
-                "${mainUrl}/ajax/dataAlternatif3.asp",
+                "${finalUrl}/ajax/dataAlternatif3.asp",
                 headers = mapOf("X-Requested-With" to "XMLHttpRequest"),
                 data = mapOf(
                     "filmid" to filmId,
@@ -185,7 +187,7 @@ class WebteIzle : MainAPI() {
 
             for (thisEmbed in playerData.data) {
                 val embedApi = app.post(
-                    "${mainUrl}/ajax/dataEmbed.asp",
+                    "${finalUrl}/ajax/dataEmbed.asp",
                     headers = mapOf("X-Requested-With" to "XMLHttpRequest"),
                     data = mapOf("id" to thisEmbed.id.toString())
                 ).document
@@ -195,8 +197,8 @@ class WebteIzle : MainAPI() {
 if (iframe == null) {
     val scriptSource = embedApi.html()
 
-    // Önce vidmoly gibi doğrudan eşleşmeyi dene
-    val matchResult = Regex("""(vidmoly)\('([\d\w]+)','""").find(scriptSource)
+    // Önce vidmoly veya filemoon gibi doğrudan eşleşmeyi dene
+    val matchResult = Regex("""(vidmoly|filemoon)\('([\d\w]+)','""").find(scriptSource)
 
     if (matchResult != null) {
         val platform = matchResult.groupValues[1]
@@ -204,6 +206,7 @@ if (iframe == null) {
 
         iframe = when (platform) {
             "vidmoly" -> "https://vidmoly.net/embed-${vidId}.html"
+            "filemoon" -> "https://filemoon.sx/e/${vidId}"
             else -> null
         }
     } else {
@@ -223,7 +226,7 @@ if (iframe == null) {
 
 					if (iframe != null) {
                     Log.d("WBTI", "iframe » $iframe")
-                    loadExtractor(iframe, "${mainUrl}/", subtitleCallback, callback)
+                    loadExtractor(iframe, "${finalUrl}/", subtitleCallback, callback)
 					}
             }
         }
