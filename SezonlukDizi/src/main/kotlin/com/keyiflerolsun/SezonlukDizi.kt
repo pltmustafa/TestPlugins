@@ -43,9 +43,26 @@ class SezonlukDizi : MainAPI() {
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
-        val document = app.get("${mainUrl}/diziler.asp?adi=${query}").document
+        val finalUrl = app.get(mainUrl).url
+        val ajaxUrl  = "${finalUrl.trimEnd('/')}/ajax/arama.asp"
 
-        return document.select("div.afis a").mapNotNull { it.toSearchResult() }
+        val searchResponse = app.post(
+            ajaxUrl,
+            headers = mapOf("X-Requested-With" to "XMLHttpRequest"),
+            data    = mapOf("q" to query)
+        ).parsedSafe<SearchAjaxResponse>()
+
+        val results = mutableListOf<SearchResponse>()
+        searchResponse?.results?.diziler?.results?.forEach { item ->
+            val title = item.title ?: return@forEach
+            val url   = item.url ?: return@forEach
+            val image = item.image ?: ""
+            
+            results.add(newTvSeriesSearchResponse(title, "$finalUrl$url", TvType.TvSeries) {
+                this.posterUrl = "$finalUrl$image"
+            })
+        }
+        return results
     }
 
     override suspend fun quickSearch(query: String): List<SearchResponse> = search(query)

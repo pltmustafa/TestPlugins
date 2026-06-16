@@ -20,3 +20,23 @@ data class AspData(
     val alternatif : String,
     val embed : String
 )
+
+data class SearchAjaxResponse(
+    @JsonProperty("status") val status: String?,
+    @JsonProperty("results") val results: SearchResultsData?
+)
+
+data class SearchResultsData(
+    @JsonProperty("diziler") val diziler: SearchCategoryData?,
+    @JsonProperty("filmler") val filmler: SearchCategoryData?
+)
+
+data class SearchCategoryData(
+    @JsonProperty("results") val results: List<SearchItemData>?
+)
+
+data class SearchItemData(
+    @JsonProperty("title") val title: String?,
+    @JsonProperty("url") val url: String?,
+    @JsonProperty("image") val image: String?
+)
