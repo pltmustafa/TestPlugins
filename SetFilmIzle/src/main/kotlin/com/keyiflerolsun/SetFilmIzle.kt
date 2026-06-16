@@ -68,7 +68,7 @@ class SetFilmIzle : MainAPI() {
 
     override suspend fun search(query: String): List<SearchResponse> {
         val mainPage = app.get(mainUrl).document
-        val nonce    = Regex("""nonce: '(.*)'""").find(mainPage.html())?.groupValues?.get(1) ?: ""
+        val nonce    = Regex("""search:\s*["']([^"']+)["']""").find(mainPage.html())?.groupValues?.get(1) ?: ""
         val search   = app.post(
             url     = "${mainUrl}/wp-admin/admin-ajax.php",
             headers = mapOf("X-Requested-With" to "XMLHttpRequest"),
