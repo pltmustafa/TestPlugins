@@ -140,7 +140,7 @@ class KekikStream : MainAPI() {
                 
                 val responseText = req.text
                 val res = mapper.readValue(responseText, com.fasterxml.jackson.module.kotlin.jacksonTypeRef<WBResponse<List<WBSearchItem>>>())
-                res?.result?.mapNotNull { it.toSearchResponse(pluginName, isSearch = true) } ?: emptyList()
+                res?.result?.mapNotNull { it.toSearchResponse(pluginName, isSearch = true) }?.take(2) ?: emptyList()
             } catch (e: Exception) {
                 emptyList()
             }
