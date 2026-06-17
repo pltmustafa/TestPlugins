@@ -1,6 +1,6 @@
 {
-  "name": "pltmustafaa cloudstream",
-  "description": "test",
+  "name": "plt-stream",
+  "description": "Kişisel kullanım amacıyla yapılmıştır.",
   "manifestVersion": 1,
   "pluginLists": [
     "https://raw.githubusercontent.com/pltmustafa/plt-stream/builds/plugins.json"
