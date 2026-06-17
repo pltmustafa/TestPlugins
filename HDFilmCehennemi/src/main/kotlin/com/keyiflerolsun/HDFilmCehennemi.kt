@@ -226,6 +226,7 @@ class HDFilmCehennemi : MainAPI() {
     }
 
     private fun decryptNewFormat(jsCode: String): String {
+        Log.d("HDCH_Extractor", "decryptNewFormat -> jsCode: $jsCode")
         try {
             val arrayString = jsCode.substringAfter("([", "").substringBefore("])")
             if (arrayString.isEmpty()) return ""
@@ -234,7 +235,7 @@ class HDFilmCehennemi : MainAPI() {
                 .map { it.trim('"', ' ', '\'') }
                 .joinToString("")
             
-            var result = valueParts
+            var result = valueParts.reversed()
             
             result = result.map { c ->
                 when {
@@ -245,15 +246,14 @@ class HDFilmCehennemi : MainAPI() {
             }.joinToString("")
             
             val decodedBytes = android.util.Base64.decode(result, android.util.Base64.DEFAULT)
-            val reversedBytes = decodedBytes.reversedArray()
             
             val magicNumberRegex = Regex("""\((\d+)%\(i\+5\)""")
             val magicMatch = magicNumberRegex.find(jsCode)
             val magicNumber = magicMatch?.groupValues?.get(1)?.toIntOrNull() ?: 399756995
             
             var unmix = ""
-            for (i in reversedBytes.indices) {
-                var charCode = reversedBytes[i].toInt() and 0xFF
+            for (i in decodedBytes.indices) {
+                var charCode = decodedBytes[i].toInt() and 0xFF
                 charCode = (charCode - (magicNumber % (i + 5)) + 256) % 256
                 unmix += charCode.toChar()
             }
@@ -266,15 +266,21 @@ class HDFilmCehennemi : MainAPI() {
     }
 
     private fun dcHello(base64Input: String): String {
+        Log.d("HDCH_Extractor", "dcHello -> base64Input: $base64Input")
         val decodedOnce = base64Decode(base64Input)
         val reversedString = decodedOnce.reversed()
         val decodedTwice = base64Decode(reversedString)
-        return extractFinalUrl(decodedTwice)
+        val extractedUrl = extractFinalUrl(decodedTwice)
+        Log.d("HDCH_Extractor", "dcHello -> extractedUrl: $extractedUrl")
+        return extractedUrl
     }
 
     private suspend fun invokeLocalSource(source: String, url: String, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit ) {
+        Log.d("HDCH_Extractor", "invokeLocalSource -> url: $url")
         val script    = app.get(url, referer = "${mainUrl}/", interceptor = interceptor).document.select("script").find { it.data().contains("sources:") }?.data() ?: return
+        Log.d("HDCH_Extractor", "invokeLocalSource -> script found")
         val videoData = getAndUnpack(script).substringAfter("file_link=\"").substringBefore("\";")
+        Log.d("HDCH_Extractor", "invokeLocalSource -> videoData: $videoData")
         
         val lastUrl = if (videoData.contains("dc_hello(\"")) {
             val base64Input = videoData.substringAfter("dc_hello(\"").substringBefore("\");")
@@ -337,6 +343,7 @@ override suspend fun loadLinks(
                 ),
                 referer = data
             ).text
+            Log.d("HDCH_Extractor", "apiGet -> response: $apiGet")
             var iframe = Regex("""data-src=\\"([^"]+)""").find(apiGet)?.groupValues?.get(1)!!.replace("\\", "")
             if (iframe.contains("rapidrame")) {
                 iframe = "${mainUrl}/rplayer/" + iframe.substringAfter("?rapidrame_id=")
