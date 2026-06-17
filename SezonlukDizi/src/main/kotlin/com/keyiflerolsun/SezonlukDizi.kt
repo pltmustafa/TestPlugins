@@ -123,14 +123,17 @@ class SezonlukDizi : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         Log.d("SZD", "data » $data")
-        val document = app.get(data).document
-        val aspData = getAspData()
+        val req = app.get(data)
+        val document = req.document
+        val baseUrl = Regex("""(https?://[^/]+)""").find(req.url)?.value ?: mainUrl
+
+        val aspData = getAspData(baseUrl)
         val bid = document.selectFirst("div#dilsec")?.attr("data-id") ?: return false
         Log.d("SZD", "bid » $bid")
 
         // --- ALTYAZI KISMI ---
         val altyaziResponse = app.post(
-            "${mainUrl}/ajax/dataAlternatif${aspData.alternatif}.asp",
+            "${baseUrl}/ajax/dataAlternatif${aspData.alternatif}.asp",
             headers = mapOf("X-Requested-With" to "XMLHttpRequest"),
             data = mapOf(
                 "bid" to bid,
@@ -143,14 +146,14 @@ class SezonlukDizi : MainAPI() {
                 Log.d("SZD", "dil»1 | veri.baslik » ${veri.baslik}")
 
                 val veriResponse = app.post(
-                    "${mainUrl}/ajax/dataEmbed${aspData.embed}.asp",
+                    "${baseUrl}/ajax/dataEmbed${aspData.embed}.asp",
                     headers = mapOf("X-Requested-With" to "XMLHttpRequest"),
                     data = mapOf("id" to "${veri.id}")
                 ).document
 
                 val iframeSrc = veriResponse.selectFirst("iframe")?.attr("src")
                 val iframe = fixUrlNull(iframeSrc) ?: continue
-                loadExtractor(iframe, "${mainUrl}/", subtitleCallback) { link ->
+                loadExtractor(iframe, "${baseUrl}/", subtitleCallback) { link ->
                     callback.invoke(
                         ExtractorLink(
                             source = "AltYazı - ${veri.baslik}",
@@ -169,7 +172,7 @@ class SezonlukDizi : MainAPI() {
 
         // --- DUBLAJ KISMI ---
         val dublajResponse = app.post(
-            "${mainUrl}/ajax/dataAlternatif${aspData.alternatif}.asp",
+            "${baseUrl}/ajax/dataAlternatif${aspData.alternatif}.asp",
             headers = mapOf("X-Requested-With" to "XMLHttpRequest"),
             data = mapOf(
                 "bid" to bid,
@@ -182,7 +185,7 @@ class SezonlukDizi : MainAPI() {
                 Log.d("SZD", "dil»0 | veri.baslik » ${veri.baslik}")
 
                 val veriResponse = app.post(
-                    "${mainUrl}/ajax/dataEmbed${aspData.embed}.asp",
+                    "${baseUrl}/ajax/dataEmbed${aspData.embed}.asp",
                     headers = mapOf("X-Requested-With" to "XMLHttpRequest"),
                     data = mapOf("id" to "${veri.id}")
                 ).document
@@ -191,7 +194,7 @@ class SezonlukDizi : MainAPI() {
                 val iframe = fixUrlNull(iframeSrc) ?: continue
                 Log.d("SZD", "dil»0 | iframe » $iframe")
 
-                loadExtractor(iframe, "${mainUrl}/", subtitleCallback) { link ->
+                loadExtractor(iframe, "${baseUrl}/", subtitleCallback) { link ->
                     callback.invoke(
                         ExtractorLink(
                             source = "Dublaj - ${veri.baslik}",
@@ -212,8 +215,8 @@ class SezonlukDizi : MainAPI() {
     }
 
     //Helper function for getting the number (probably some kind of version?) after the dataAlternatif and dataEmbed
-    private suspend fun getAspData() : AspData{
-        val websiteCustomJavascript = app.get("${this.mainUrl}/js/site.min.js")
+    private suspend fun getAspData(baseUrl: String) : AspData{
+        val websiteCustomJavascript = app.get("${baseUrl}/js/site.min.js")
         val dataAlternatifAsp = Regex("""dataAlternatif(.*?).asp""").find(websiteCustomJavascript.text)?.groupValues?.get(1)
             .toString()
         val dataEmbedAsp = Regex("""dataEmbed(.*?).asp""").find(websiteCustomJavascript.text)?.groupValues?.get(1)
