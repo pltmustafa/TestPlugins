@@ -58,6 +58,8 @@ class KekikStream : MainAPI() {
             
             if (plugins.isNotEmpty()) {
                 cachedPlugins = plugins
+                val pluginNames = plugins.mapNotNull { it.name }.sorted()
+                KekikStreamPlugin.savePluginNames(pluginNames)
             }
 
             if (plugins.isEmpty()) {
@@ -129,27 +131,18 @@ class KekikStream : MainAPI() {
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
-        val plugins = getPluginsForSearch()
-        val encodedQuery = URLEncoder.encode(query, "UTF-8")
-        val results = plugins.amap { plugin ->
-            try {
-                val pluginName = plugin.name ?: return@amap emptyList()
-                if (!KekikStreamPlugin.isPluginEnabled(pluginName)) return@amap emptyList()
-                val url = "$mainUrl/search?plugin=$pluginName&query=$encodedQuery"
-                val req = asyncApp.get(url, headers = headers, timeout = 30000)
-                
-                val responseText = req.text
-                val res = mapper.readValue(responseText, com.fasterxml.jackson.module.kotlin.jacksonTypeRef<WBResponse<List<WBSearchItem>>>())
-                res?.result?.mapNotNull { it.toSearchResponse(pluginName, isSearch = true) }?.take(2) ?: emptyList()
-            } catch (e: Exception) {
-                emptyList()
-            }
-        }.flatten()
+        java.lang.Thread.sleep(1900L)
         
-        return results
+        return listOf(
+            newMovieSearchResponse(
+                "Lütfen Sağ Üstten Kaynak Filtrelerini Seçiniz",
+                "wb://watchbuddy?plugin=none&url=none",
+                TvType.Movie
+            ) {
+                this.posterUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Warning_icon.png/512px-Warning_icon.png"
+            }
+        )
     }
-
-    override suspend fun quickSearch(query: String): List<SearchResponse> = search(query)
 
     private fun WBSearchItem.toSearchResponse(pluginName: String, isSearch: Boolean): SearchResponse? {
         val titleStr = this.title ?: this.name ?: return null

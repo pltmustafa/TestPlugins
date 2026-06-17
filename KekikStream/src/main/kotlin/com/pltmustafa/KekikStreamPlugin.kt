@@ -15,22 +15,33 @@ import okhttp3.Request
 @CloudstreamPlugin
 class KekikStreamPlugin : Plugin() {
     companion object {
-        private const val PREFS_NAME = "KekikStreamPrefs"
-        private const val PLUGIN_PREFIX = "plugin_enabled_"
-        var sharedPrefs: SharedPreferences? = null
+        var sharedPrefs: android.content.SharedPreferences? = null
+        private const val PREFS_NAME = "KekikStreamSettings"
 
-        fun isPluginEnabled(pluginName: String): Boolean {
-            return sharedPrefs?.getBoolean("$PLUGIN_PREFIX$pluginName", true) ?: true
+        fun isPluginEnabled(name: String): Boolean {
+            return sharedPrefs?.getBoolean("plugin_$name", true) ?: true
         }
 
-        fun setPluginEnabled(pluginName: String, enabled: Boolean) {
-            sharedPrefs?.edit()?.putBoolean("$PLUGIN_PREFIX$pluginName", enabled)?.apply()
+        fun setPluginEnabled(name: String, enabled: Boolean) {
+            sharedPrefs?.edit()?.putBoolean("plugin_$name", enabled)?.apply()
+        }
+        
+        fun loadSavedPlugins(): List<String> {
+            return sharedPrefs?.getStringSet("saved_plugin_names", emptySet())?.toList() ?: emptyList()
+        }
+        
+        fun savePluginNames(names: List<String>) {
+            sharedPrefs?.edit()?.putStringSet("saved_plugin_names", names.toSet())?.apply()
         }
     }
 
     override fun load(context: Context) {
-        val activity = context as? Activity
         sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val savedPlugins = loadSavedPlugins()
+        
+        savedPlugins.forEach { pluginName ->
+            registerMainAPI(KekikChildProvider(pluginName))
+        }
 
         registerMainAPI(KekikStream())
 
