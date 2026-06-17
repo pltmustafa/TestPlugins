@@ -215,7 +215,8 @@ class DiziBal : MainAPI() {
                                 val subParts = subEntry.split("]")
                                 if (subParts.size > 1) {
                                     val lang = subParts[0].replace("[", "").trim()
-                                    val subUrl = host + subParts[1].trim()
+                                    val subUrlPart = subParts[1].trim()
+                                    val subUrl = if (subUrlPart.startsWith("http")) subUrlPart else host + subUrlPart
                                     subtitleCallback(SubtitleFile(lang, subUrl))
                                 }
                             }
