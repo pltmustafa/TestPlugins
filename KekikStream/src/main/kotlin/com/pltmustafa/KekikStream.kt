@@ -65,6 +65,7 @@ class KekikStream : MainAPI() {
             } else {
                 plugins.mapNotNull { plugin ->
                     val pluginName = plugin.name ?: return@mapNotNull null
+                    if (!KekikStreamPlugin.isPluginEnabled(pluginName)) return@mapNotNull null
                     val categoryEntry = plugin.mainPage?.entries?.firstOrNull() ?: return@mapNotNull null
                     val encodedUrl = categoryEntry.key
                     val categoryName = categoryEntry.value
@@ -133,6 +134,7 @@ class KekikStream : MainAPI() {
         val results = plugins.amap { plugin ->
             try {
                 val pluginName = plugin.name ?: return@amap emptyList()
+                if (!KekikStreamPlugin.isPluginEnabled(pluginName)) return@amap emptyList()
                 val url = "$mainUrl/search?plugin=$pluginName&query=$encodedQuery"
                 val req = asyncApp.get(url, headers = headers, timeout = 30000)
                 
