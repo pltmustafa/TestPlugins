@@ -20,9 +20,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@master
+        uses: actions/checkout@v3
         with:
           path: "src"
+          fetch-depth: 0
 
       - name: Checkout builds
         uses: actions/checkout@master
@@ -40,6 +41,39 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v2
+
+      - name: Auto-increment plugin versions
+        run: |
+          cd $GITHUB_WORKSPACE/src
+          
+          # Determine changed files
+          if [ "${{ github.event_name }}" = "push" ] && [ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]; then
+            CHANGED_DIRS=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep '/' | cut -d'/' -f1 | sort -u)
+          else
+            CHANGED_DIRS=$(git diff --name-only HEAD~1 HEAD | grep '/' | cut -d'/' -f1 | sort -u || echo "")
+          fi
+          
+          MODIFIED=false
+          for PLUGIN_DIR in $CHANGED_DIRS; do
+            if [ -f "$PLUGIN_DIR/build.gradle.kts" ]; then
+              CURRENT_VERSION=$(grep -E '^version\s*=\s*[0-9]+' "$PLUGIN_DIR/build.gradle.kts" | sed -E 's/version\s*=\s*([0-9]+)/\1/')
+              if [ -n "$CURRENT_VERSION" ]; then
+                NEW_VERSION=$((CURRENT_VERSION + 1))
+                echo "Incrementing $PLUGIN_DIR version: $CURRENT_VERSION -> $NEW_VERSION"
+                sed -i -E "s/^(version\s*=\s*)[0-9]+/\1$NEW_VERSION/" "$PLUGIN_DIR/build.gradle.kts"
+                MODIFIED=true
+              fi
+            fi
+          done
+
+          if [ "$MODIFIED" = "true" ]; then
+            git config --local user.email "actions@github.com"
+            git config --local user.name "GitHub Actions"
+            git add .
+            git commit -m "Auto-increment plugin versions [skip ci]"
+            # Push changes back to the branch that triggered the workflow
+            git push origin HEAD:${{ github.ref_name }}
+          fi
 
       - name: Build Plugins
         run: |
