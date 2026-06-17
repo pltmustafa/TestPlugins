@@ -56,11 +56,11 @@ jobs:
           MODIFIED=false
           for PLUGIN_DIR in $CHANGED_DIRS; do
             if [ -f "$PLUGIN_DIR/build.gradle.kts" ]; then
-              CURRENT_VERSION=$(grep -E '^version\s*=\s*[0-9]+' "$PLUGIN_DIR/build.gradle.kts" | sed -E 's/version\s*=\s*([0-9]+)/\1/')
+              CURRENT_VERSION=$(grep -oE '^version[[:space:]]*=[[:space:]]*[0-9]+' "$PLUGIN_DIR/build.gradle.kts" | grep -oE '[0-9]+')
               if [ -n "$CURRENT_VERSION" ]; then
                 NEW_VERSION=$((CURRENT_VERSION + 1))
                 echo "Incrementing $PLUGIN_DIR version: $CURRENT_VERSION -> $NEW_VERSION"
-                sed -i -E "s/^(version\s*=\s*)[0-9]+/\1$NEW_VERSION/" "$PLUGIN_DIR/build.gradle.kts"
+                sed -i -E "s/^(version[[:space:]]*=[[:space:]]*)[0-9]+/\1$NEW_VERSION/" "$PLUGIN_DIR/build.gradle.kts"
                 MODIFIED=true
               fi
             fi
