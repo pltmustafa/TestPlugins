@@ -10,3 +10,7 @@
 .cxx
 local.properties
 .vscode
+
+# Local Server
+local_server/
+start_local_repo.sh
