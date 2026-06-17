@@ -56,6 +56,9 @@ class KekikStreamPlugin : Plugin() {
                 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
                 <title>KekikStream Ayarları</title>
                 <style>
+                    * {
+                        -webkit-tap-highlight-color: transparent;
+                    }
                     :root {
                         --bg: #0f0f1a;
                         --surface: rgba(255, 255, 255, 0.05);
