@@ -160,7 +160,7 @@ class KekikStream : MainAPI() {
                 "wb://watchbuddy?plugin=none&url=none$index",
                 TvType.Movie
             ) {
-                this.posterUrl = "https://watchbuddy.tv/static/home/ico/225x225bb.png"
+                this.posterUrl = "https://img.icons8.com/color/512/error--v1.png"
             }
         }
     }
