@@ -37,7 +37,36 @@ class KekikStreamPlugin : Plugin() {
 
     override fun load(context: Context) {
         sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val savedPlugins = loadSavedPlugins()
+        var savedPlugins = loadSavedPlugins()
+        
+        if (savedPlugins.isEmpty()) {
+            val policy = android.os.StrictMode.ThreadPolicy.Builder().permitAll().build()
+            android.os.StrictMode.setThreadPolicy(policy)
+            
+            try {
+                val url = "https://stream.watchbuddy.tv/api/v1/plugins"
+                val text = kotlinx.coroutines.runBlocking {
+                    com.lagradost.cloudstream3.app.get(url, headers = mapOf(
+                        "User-Agent" to "Dart/3.11 (dart:io)", 
+                        "Accept" to "application/json"
+                    )).text
+                }
+                
+                if (text.isNotEmpty()) {
+                    val regex = """"name"\s*:\s*"([^"]+)"""".toRegex()
+                    val pluginNames = regex.findAll(text).map { it.groupValues[1] }.toList().sorted()
+                    if (pluginNames.isNotEmpty()) {
+                        savePluginNames(pluginNames)
+                        savedPlugins = pluginNames
+                    }
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("KEKIK", "Sync fetch error", e)
+            }
+        }
+        
+        
+        android.util.Log.d("KEKIK_PLUGINS", "Loaded plugins: $savedPlugins")
         
         savedPlugins.forEach { pluginName ->
             registerMainAPI(KekikChildProvider(pluginName))

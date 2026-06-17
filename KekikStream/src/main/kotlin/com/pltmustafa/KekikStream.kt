@@ -133,15 +133,36 @@ class KekikStream : MainAPI() {
     override suspend fun search(query: String): List<SearchResponse> {
         java.lang.Thread.sleep(1900L)
         
-        return listOf(
+        val fullMessage = "Lütfen Sağ Üstteki Filtreleme Menüsünden İstediğiniz Kaynakları Seçin"
+        val maxLength = 30
+        
+        val words = fullMessage.split(" ")
+        val chunks = mutableListOf<String>()
+        var currentChunk = ""
+        
+        for (word in words) {
+            if (currentChunk.isEmpty()) {
+                currentChunk = word
+            } else if (currentChunk.length + 1 + word.length <= maxLength) {
+                currentChunk += " $word"
+            } else {
+                chunks.add(currentChunk)
+                currentChunk = word
+            }
+        }
+        if (currentChunk.isNotEmpty()) {
+            chunks.add(currentChunk)
+        }
+        
+        return chunks.mapIndexed { index, text ->
             newMovieSearchResponse(
-                "Lütfen Sağ Üstten Kaynak Filtrelerini Seçiniz",
-                "wb://watchbuddy?plugin=none&url=none",
+                text,
+                "wb://watchbuddy?plugin=none&url=none$index",
                 TvType.Movie
             ) {
-                this.posterUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Warning_icon.png/512px-Warning_icon.png"
+                this.posterUrl = "https://watchbuddy.tv/static/home/ico/225x225bb.png"
             }
-        )
+        }
     }
 
     private fun WBSearchItem.toSearchResponse(pluginName: String, isSearch: Boolean): SearchResponse? {
