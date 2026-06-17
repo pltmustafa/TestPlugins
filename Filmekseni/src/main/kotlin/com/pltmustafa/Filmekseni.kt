@@ -9,7 +9,7 @@ import com.fasterxml.jackson.annotation.JsonProperty
 import org.jsoup.nodes.Element
 
 class Filmekseni : MainAPI() {
-    override var mainUrl              = "https://filmekseni.nl"
+    override var mainUrl              = "https://filmekseni.top"
     override var name                 = "FilmEkseni"
     override val hasMainPage          = true
     override var lang                 = "tr"
