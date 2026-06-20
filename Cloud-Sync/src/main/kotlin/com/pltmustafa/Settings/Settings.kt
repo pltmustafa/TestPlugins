@@ -19,6 +19,7 @@ import kotlinx.coroutines.launch
 object CloudSyncSettings {
 
     fun show(context: Context, plugin: CloudSyncPlugin) {
+        var alertDialog: AlertDialog? = null
         val webView = WebView(context).apply {
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
@@ -174,6 +175,12 @@ object CloudSyncSettings {
                     plugin.reload()
                     Handler(Looper.getMainLooper()).post {
                         Toast.makeText(context, "Sync data cleared and plugin reloaded", Toast.LENGTH_SHORT).show()
+                    }
+                }
+                @JavascriptInterface
+                fun setCancelable(cancelable: Boolean) {
+                    Handler(Looper.getMainLooper()).post {
+                        alertDialog?.setCanceledOnTouchOutside(cancelable)
                     }
                 }
 
@@ -564,6 +571,7 @@ object CloudSyncSettings {
                     const contentDiv = document.getElementById('guideContent');
                     
                     modal.style.display = 'block';
+                    Android.setCancelable(false);
                     
                     if (contentDiv.innerHTML.trim() === '') {
                         document.getElementById('guideLoader').style.display = 'block';
@@ -585,6 +593,7 @@ object CloudSyncSettings {
 
                 function closeSetupGuide() {
                     document.getElementById('guideModal').style.display = 'none';
+                    Android.setCancelable(true);
                 }
 
                 window.onload = loadData;
@@ -604,17 +613,17 @@ object CloudSyncSettings {
 
         webView.loadDataWithBaseURL(null, htmlTemplate, "text/html", "UTF-8", null)
 
-        val dialog = AlertDialog.Builder(context, android.R.style.Theme_DeviceDefault_Dialog_NoActionBar)
+        alertDialog = AlertDialog.Builder(context, android.R.style.Theme_DeviceDefault_Dialog_NoActionBar)
             .setView(webView)
             .create()
     
-        dialog.setOnShowListener {
-            dialog.window?.clearFlags(
+        alertDialog?.setOnShowListener {
+            alertDialog?.window?.clearFlags(
                 android.view.WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or 
                 android.view.WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM
             )
         }
         
-        dialog.show()
+        alertDialog?.show()
     }
 }
