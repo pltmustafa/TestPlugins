@@ -383,6 +383,10 @@ object CloudSyncSettings {
                 .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.85); backdrop-filter: blur(4px); }
                 .modal-content { background-color: var(--bg); margin: 10% auto; padding: 20px; border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; width: 90%; max-width: 500px; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
                 .close-btn { position: absolute; right: 15px; top: 15px; color: var(--text-muted); font-size: 24px; font-weight: bold; cursor: pointer; line-height: 1; }
+                details > summary { list-style: none; }
+                details > summary::-webkit-details-marker { display: none; }
+                details > summary::before { content: '▶ '; font-size: 10px; display: inline-block; transition: transform 0.2s; color: var(--text-muted); margin-right: 4px; }
+                details[open] > summary::before { transform: rotate(90deg); }
             </style>
         </head>
         <body>
@@ -493,9 +497,14 @@ object CloudSyncSettings {
                     
                     <div id="previewLoader" class="loader"></div>
                     
+                    <div id="visualPreviewContainer" style="display:none; margin-top:15px;">
+                        <label style="font-size:13px; color:var(--text-muted);">Visual Preview:</label>
+                        <div id="visualPreviewItems" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(90px, 1fr)); gap:10px; margin-top:8px; max-height:300px; overflow-y:auto; padding-right:5px;"></div>
+                    </div>
+                    
                     <div id="previewResultContainer" style="display:none; margin-top:15px;">
-                        <label style="font-size:13px; color:var(--text-muted);">Raw JSON Data:</label>
-                        <pre id="previewJsonData"></pre>
+                        <label style="font-size:13px; color:var(--text-muted);">Formatted Data:</label>
+                        <div id="previewJsonData" style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; overflow-x: auto; font-size: 13px; color: var(--text); border: 1px solid rgba(255,255,255,0.05); max-height: 400px; overflow-y: auto; font-family: monospace; line-height: 1.5; margin-top: 8px;"></div>
                     </div>
                 </div>
             </div>
@@ -555,14 +564,274 @@ object CloudSyncSettings {
                     Android.fetchCloudPreview(cat);
                 }
 
+                function renderJson(data, isRoot) {
+                    if (data === null) return '<span style="color:var(--danger)">null</span>';
+                    if (typeof data === "boolean") return '<span style="color:#ffcc00">' + data + '</span>';
+                    if (typeof data === "number") return '<span style="color:#32d74b">' + data + '</span>';
+                    if (typeof data === "string") {
+                        const escaped = data.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+                        return '<span style="color:#0a84ff">"' + escaped + '"</span>';
+                    }
+                    if (Array.isArray(data)) {
+                        if (data.length === 0) return '<span>[]</span>';
+                        let html = '<details ' + (isRoot ? 'open' : '') + ' style="display:inline;"><summary style="cursor:pointer; color:var(--text-muted); user-select:none; display:inline-block;">[ ' + data.length + ' items ]</summary><div style="margin-left:15px; border-left:1px solid rgba(255,255,255,0.1); padding-left:10px; margin-top:4px; margin-bottom:4px; display:block;">';
+                        for (let i = 0; i < data.length; i++) {
+                            html += '<div style="margin-bottom:2px;">' + renderJson(data[i], false) + (i < data.length - 1 ? ',' : '') + '</div>';
+                        }
+                        html += '</div><span style="color:var(--text-muted);">]</span></details>';
+                        return html;
+                    }
+                    if (typeof data === "object") {
+                        const keys = Object.keys(data);
+                        if (keys.length === 0) return '<span>{}</span>';
+                        let html = '<details ' + (isRoot ? 'open' : '') + ' style="display:inline;"><summary style="cursor:pointer; color:var(--text-muted); user-select:none; display:inline-block;">{ ' + keys.length + ' keys }</summary><div style="margin-left:15px; border-left:1px solid rgba(255,255,255,0.1); padding-left:10px; margin-top:4px; margin-bottom:4px; display:block;">';
+                        for (let i = 0; i < keys.length; i++) {
+                            const key = keys[i];
+                            html += '<div style="margin-bottom:2px;"><span style="color:#bf5af2">"' + key + '"</span>: ' + renderJson(data[key], false) + (i < keys.length - 1 ? ',' : '') + '</div>';
+                        }
+                        html += '</div><span style="color:var(--text-muted);">}</span></details>';
+                        return html;
+                    }
+                    return String(data);
+                }
+
+                function renderVisual(category, parsed) {
+                    const container = document.getElementById('visualPreviewContainer');
+                    const itemsDiv = document.getElementById('visualPreviewItems');
+                    itemsDiv.innerHTML = '';
+                    
+                    if (!parsed || (!parsed.datastore && !parsed.settings)) {
+                        container.style.display = 'none';
+                        return;
+                    }
+                    
+                    let items = [];
+                    
+                    if (category === 'bookmarks' || category === 'resume_watching') {
+                        const strMap = parsed.datastore ? (parsed.datastore._String || parsed.datastore.string || {}) : {};
+                        
+                        // Extract video positions and resume states
+                        const posMap = {};
+                        const resumeMap = {};
+                        for (let key in strMap) {
+                            try {
+                                if (key.includes('video_pos_dur')) {
+                                    const posObj = JSON.parse(strMap[key]);
+                                    if (posObj && posObj.duration && posObj.position) {
+                                        const id = key.split('/').pop();
+                                        posMap[id] = (posObj.position / posObj.duration) * 100;
+                                    }
+                                } else if (key.includes('result_resume_watching')) {
+                                    const resObj = JSON.parse(strMap[key]);
+                                    if (resObj && resObj.parentId && resObj.episodeId) {
+                                        resumeMap[resObj.parentId] = resObj.episodeId;
+                                    }
+                                }
+                            } catch(e) {}
+                        }
+                        
+                        for (let key in strMap) {
+                            try {
+                                const val = strMap[key];
+                                if (typeof val === 'string' && val.startsWith('{')) {
+                                    const obj = JSON.parse(val);
+                                    if (obj && (obj.name || obj.title) && (obj.posterUrl || obj.poster || obj.image)) {
+                                        let progress = null;
+                                        if (obj.duration && obj.pos) {
+                                            progress = (obj.pos / obj.duration) * 100;
+                                        } else if (obj.duration && obj.position) {
+                                            progress = (obj.position / obj.duration) * 100;
+                                        } else if (obj.duration && obj.watchPos) {
+                                            progress = (obj.watchPos / obj.duration) * 100;
+                                        }
+                                        
+                                        if (progress === null && obj.id) {
+                                            const epId = resumeMap[obj.id] || obj.id;
+                                            if (posMap[epId] !== undefined) {
+                                                progress = posMap[epId];
+                                            }
+                                        }
+                                        
+                                        if (progress === null) {
+                                            const url = obj.url || obj.sourceUrl || '';
+                                            for (let pk in posMap) {
+                                                if (pk && url && (url.includes(pk) || pk.includes(url))) {
+                                                    progress = posMap[pk];
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                        
+                                        items.push({
+                                            type: 'poster',
+                                            title: obj.name || obj.title,
+                                            poster: obj.posterUrl || obj.poster || obj.image,
+                                            progress: progress
+                                        });
+                                    }
+                                }
+                            } catch(e) {}
+                        }
+                    } else if (category === 'search_history') {
+                        const ds = parsed.datastore || {};
+                        const strMap = ds._String || ds.string || {};
+                        const setMap = ds._StringSet || ds.stringSet || {};
+                        
+                        // Check _String
+                        for (let key in strMap) {
+                            if (key.toUpperCase().includes('CLOUDSYNC_') || key.toUpperCase().includes('ULTIMA_')) continue;
+                            if (key.toLowerCase().includes('search_history')) {
+                                try {
+                                    const val = strMap[key];
+                                    if (typeof val === 'string') {
+                                        if (val.startsWith('[')) {
+                                            const arr = JSON.parse(val);
+                                            if (Array.isArray(arr)) {
+                                                arr.forEach(s => {
+                                                    if (typeof s === 'string' && s.length > 0) items.push({ type: 'pill', title: s });
+                                                    else if (typeof s === 'object' && s && (s.searchText || s.query || s.name || s.title)) {
+                                                        items.push({ type: 'pill', title: s.searchText || s.query || s.name || s.title });
+                                                    }
+                                                });
+                                            }
+                                        } else if (val.startsWith('{')) {
+                                            const obj = JSON.parse(val);
+                                            if (obj && (obj.searchText || obj.query || obj.name || obj.title)) {
+                                                items.push({ type: 'pill', title: obj.searchText || obj.query || obj.name || obj.title });
+                                            }
+                                        } else {
+                                            if (isNaN(Number(val)) && val.length > 0) {
+                                                items.push({ type: 'pill', title: val });
+                                            }
+                                        }
+                                    }
+                                } catch(e) {}
+                            }
+                        }
+                        
+                        // Check _StringSet
+                        for (let key in setMap) {
+                            if (key.toUpperCase().includes('CLOUDSYNC_') || key.toUpperCase().includes('ULTIMA_')) continue;
+                            if (key.toLowerCase().includes('search_history')) {
+                                try {
+                                    const val = setMap[key];
+                                    if (Array.isArray(val)) {
+                                        val.forEach(s => {
+                                            if (typeof s === 'string' && s.length > 0) items.push({ type: 'pill', title: s });
+                                        });
+                                    }
+                                } catch(e) {}
+                            }
+                        }
+                    } else if (category === 'extensions') {
+                        const strMap = parsed.datastore ? (parsed.datastore._String || parsed.datastore.string || {}) : {};
+                        for (let key in strMap) {
+                            try {
+                                const val = strMap[key];
+                                if (typeof val === 'string' && val.startsWith('[')) {
+                                    const arr = JSON.parse(val);
+                                    if (Array.isArray(arr)) {
+                                        arr.forEach(obj => {
+                                            if (obj && (obj.name || obj.internalName)) {
+                                                items.push({
+                                                    type: 'card',
+                                                    title: obj.name || obj.internalName,
+                                                    poster: obj.iconUrl || obj.icon || null
+                                                });
+                                            }
+                                        });
+                                    }
+                                }
+                            } catch(e) {}
+                        }
+                    } else if (category === 'settings') {
+                        const ds = parsed.datastore || {};
+                        const st = parsed.settings || {};
+                        const allPrefs = Object.assign({}, ds._Bool, ds._Int, ds._String, st._Bool, st._Int, st._String);
+                        for (let key in allPrefs) {
+                            if (!key || key.trim() === '') continue;
+                            const k = key.toLowerCase();
+                            if (k.startsWith('ultima_') || k.startsWith('cloudsync_')) continue;
+                            if (k.includes('sync_hash') || k.includes('sync_ts') || k.includes('synced_keys')) continue;
+                            if (k.includes('search_history') || k.includes('result_') || k.includes('video_pos')) continue;
+                            items.push({ type: 'setting', title: key, value: String(allPrefs[key]) });
+                        }
+                    }
+                    
+                    if (items.length === 0) {
+                        container.style.display = 'none';
+                        return;
+                    }
+                    
+                    container.style.display = 'block';
+                    
+                    let html = '';
+                    const fallbackImg = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTUwIiBmaWxsPSIjMmEyYTM1Ij48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjE1MCIvPjx0ZXh0IHg9IjUwIiB5PSI3NSIgZmlsbD0iIzg4OCIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTIiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiPk5vIEltYWdlPC90ZXh0Pjwvc3ZnPg==';
+                    
+                    if (items[0].type === 'poster') {
+                        itemsDiv.style.display = 'grid';
+                        itemsDiv.style.gridTemplateColumns = 'repeat(auto-fill, minmax(90px, 1fr))';
+                        items.forEach(item => {
+                            const poster = item.poster || fallbackImg;
+                            const title = item.title || 'Unknown';
+                            html += '<div style="background:rgba(255,255,255,0.05); border-radius:8px; overflow:hidden; text-align:center; position:relative; border:1px solid rgba(255,255,255,0.1);">';
+                            html += '<div style="width:100%; padding-top:150%; position:relative;">';
+                            html += '<img src="' + poster + '" style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover;" onerror="this.src=\'' + fallbackImg + '\'">';
+                            html += '</div>';
+                            html += '<div style="padding:5px; font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; background:rgba(0,0,0,0.8); position:absolute; bottom:0; width:100%; display:flex; flex-direction:column; gap:4px;">';
+                            html += '<span>' + title + '</span>';
+                            if (item.progress !== null && item.progress !== undefined && !isNaN(item.progress)) {
+                                html += '<div style="width:100%; height:3px; background:rgba(255,255,255,0.2); border-radius:2px; overflow:hidden;">';
+                                html += '<div style="height:100%; background:#e50914; width:' + Math.min(100, Math.max(0, item.progress)) + '%;"></div>';
+                                html += '</div>';
+                            }
+                            html += '</div></div>';
+                        });
+                    } else if (items[0].type === 'pill') {
+                        itemsDiv.style.display = 'flex';
+                        itemsDiv.style.flexWrap = 'wrap';
+                        itemsDiv.style.gap = '8px';
+                        items.forEach(item => {
+                            html += '<div style="background:rgba(255,255,255,0.1); padding:6px 12px; border-radius:16px; font-size:12px; border:1px solid rgba(255,255,255,0.05);">' + item.title + '</div>';
+                        });
+                    } else if (items[0].type === 'card') {
+                        itemsDiv.style.display = 'flex';
+                        itemsDiv.style.flexDirection = 'column';
+                        itemsDiv.style.gap = '8px';
+                        items.forEach(item => {
+                            html += '<div style="display:flex; align-items:center; background:rgba(255,255,255,0.05); padding:10px 14px; border-radius:10px; border:1px solid rgba(255,255,255,0.05);">';
+                            if (item.poster) {
+                                html += '<img src="' + item.poster + '" style="width:24px; height:24px; border-radius:4px; margin-right:12px; object-fit:cover;" onerror="this.style.display=\'none\'">';
+                            } else {
+                                html += '<div style="width:24px; height:24px; border-radius:4px; margin-right:12px; background:rgba(255,255,255,0.1); display:flex; align-items:center; justify-content:center;"><span style="font-size:12px;color:#888;">📦</span></div>';
+                            }
+                            html += '<span style="font-size:14px; font-weight:500;">' + item.title + '</span>';
+                            html += '</div>';
+                        });
+                    } else if (items[0].type === 'setting') {
+                        itemsDiv.style.display = 'grid';
+                        itemsDiv.style.gridTemplateColumns = 'repeat(auto-fill, minmax(140px, 1fr))';
+                        items.forEach(item => {
+                            html += '<div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">';
+                            html += '<div style="font-size:10px; color:var(--text-muted); margin-bottom:4px; word-break:break-all;">' + item.title + '</div>';
+                            html += '<div style="font-size:13px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + item.value + '</div>';
+                            html += '</div>';
+                        });
+                    }
+                    
+                    itemsDiv.innerHTML = html;
+                }
+
                 function showCloudPreview(category, jsonData) {
                     document.getElementById('previewLoader').style.display = 'none';
                     document.getElementById('previewResultContainer').style.display = 'block';
                     try {
                         const parsed = JSON.parse(jsonData);
-                        document.getElementById('previewJsonData').textContent = JSON.stringify(parsed, null, 2);
+                        document.getElementById('previewJsonData').innerHTML = renderJson(parsed, true);
+                        renderVisual(category, parsed);
                     } catch(e) {
                         document.getElementById('previewJsonData').textContent = jsonData;
+                        document.getElementById('visualPreviewContainer').style.display = 'none';
                     }
                 }
 
