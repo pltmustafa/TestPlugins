@@ -163,7 +163,7 @@ class DiziMom : MainAPI() {
             val document = app.get(data, headers=ua, interceptor = interceptor).document
 
             val iframes     = mutableListOf<String>()
-            val mainIframe = document.selectFirst("div.video p iframe")?.attr("src") ?: return false
+            val mainIframe = document.selectFirst("div.video p iframe")?.attr("src") ?: throw Exception("Gerekli veri bulunamadı")
             iframes.add(mainIframe)
 
             document.select("div.sources a").forEach {

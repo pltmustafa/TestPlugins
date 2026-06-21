@@ -144,7 +144,7 @@ class SezonlukDizi : MainAPI() {
             val baseUrl = Regex("""(https?://[^/]+)""").find(req.url)?.value ?: mainUrl
 
             val aspData = getAspData(baseUrl)
-            val bid = document.selectFirst("div#dilsec")?.attr("data-id") ?: return false
+            val bid = document.selectFirst("div#dilsec")?.attr("data-id") ?: throw Exception("Gerekli veri bulunamadı")
             Log.d("SZD", "bid » $bid")
 
             // --- ALTYAZI KISMI ---

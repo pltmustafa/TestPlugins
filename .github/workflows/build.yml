@@ -70,9 +70,14 @@ jobs:
             git config --local user.email "actions@github.com"
             git config --local user.name "GitHub Actions"
             git add .
-            git commit -m "Auto-increment plugin versions [skip ci]"
-            # Push changes back to the branch that triggered the workflow
-            git push origin HEAD:${{ github.ref_name }}
+            
+            MSG=$(git log -1 --pretty=%B)
+            if ! echo "$MSG" | grep -q "\[skip ci\]"; then
+              MSG="$MSG [skip ci]"
+            fi
+            
+            git commit --amend -m "$MSG"
+            git push origin HEAD:${{ github.ref_name }} --force
           fi
 
       - name: Build Plugins

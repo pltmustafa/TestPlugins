@@ -162,7 +162,7 @@ class DiziYou : MainAPI() {
             Log.d("DZY", "data » $data")
             val document = app.get(data).document
 
-            val itemId     = document.selectFirst("iframe#diziyouPlayer")?.attr("src")?.split("/")?.lastOrNull()?.substringBefore(".html") ?: return false
+            val itemId     = document.selectFirst("iframe#diziyouPlayer")?.attr("src")?.split("/")?.lastOrNull()?.substringBefore(".html") ?: throw Exception("Gerekli veri bulunamadı")
             Log.d("DZY", "itemId » $itemId")
 
             val subTitles  = mutableListOf<DiziyouSubtitle>()

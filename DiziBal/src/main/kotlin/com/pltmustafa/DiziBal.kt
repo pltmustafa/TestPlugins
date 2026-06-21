@@ -176,7 +176,7 @@ class DiziBal : MainAPI() {
 
             if (data.startsWith("$apiUrl/series/")) {
                 val res = app.get(data).parsedSafe<WStreamResponse>()?.data
-                streamUrl = res?.streamUrl ?: return false
+                streamUrl = res?.streamUrl ?: throw Exception("Gerekli veri bulunamadı")
             }
 
             if (streamUrl.contains("/embed-")) {
@@ -250,7 +250,7 @@ class DiziBal : MainAPI() {
                 return true
             }
             
-            return false
+            throw Exception("Gerekli veri bulunamadı")
         } catch (e: Exception) {
             android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                 ErrorUtils.showPluginError(DiziBalPlugin.appContext, this.name, "LOAD_LINKS", data)

@@ -295,7 +295,7 @@ private fun Element.toMainPageResult(): SearchResponse? {
                 ),
                 interceptor = interceptor
             ).document
-            var iframe = document.selectFirst("div#video-area iframe")?.attr("src")?: return false
+            var iframe = document.selectFirst("div#video-area iframe")?.attr("src")?: throw Exception("Gerekli veri bulunamadı")
             Log.d("DZBX", "iframe » $iframe")
 
             iframeDecode(data, iframe, subtitleCallback, _callback)
@@ -311,7 +311,7 @@ private fun Element.toMainPageResult(): SearchResponse? {
                     ),
                     interceptor = interceptor
                 ).document
-                iframe = subDoc.selectFirst("div#video-area iframe")?.attr("src")?: return false
+                iframe = subDoc.selectFirst("div#video-area iframe")?.attr("src")?: throw Exception("Gerekli veri bulunamadı")
                 Log.d("DZBX", "iframe » $iframe")
 
                 iframeDecode(data, iframe, subtitleCallback, _callback)

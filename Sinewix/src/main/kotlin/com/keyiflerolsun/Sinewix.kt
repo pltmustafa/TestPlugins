@@ -124,7 +124,7 @@ class Sinewix : MainAPI() {
             _linksFound++
             callback.invoke(link)
         }
-            if (data.isBlank()) return false
+            if (data.isBlank()) throw Exception("Gerekli veri bulunamadı")
             loadExtractor(data, subtitleCallback, _callback)
             if (_linksFound == 0) throw Exception("Sayfada hiçbir link bulunamadı, site yapısı değişmiş olabilir.")
         return true

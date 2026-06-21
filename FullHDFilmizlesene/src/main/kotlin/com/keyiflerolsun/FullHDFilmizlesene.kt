@@ -191,7 +191,7 @@ class FullHDFilmizlesene : MainAPI() {
             val document    = app.get(data).document
             val videoLinks = getVideoLinks(document)
             Log.d("FHD", "videoLinks » $videoLinks")
-            if (videoLinks.isEmpty()) return false
+            if (videoLinks.isEmpty()) throw Exception("Gerekli veri bulunamadı")
 
 
             for (videoMap in videoLinks) {

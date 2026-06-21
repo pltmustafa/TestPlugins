@@ -422,7 +422,7 @@ class Dizilla : MainAPI() {
             callback.invoke(link)
         }
             val document = app.get(data, interceptor = interceptor).document
-            val script = document.selectFirst("script#__NEXT_DATA__")?.data() ?: return false
+            val script = document.selectFirst("script#__NEXT_DATA__")?.data() ?: throw Exception("Gerekli veri bulunamadı")
 
             val objectMapper = ObjectMapper().registerModule(KotlinModule.Builder().build())
             objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
@@ -430,13 +430,13 @@ class Dizilla : MainAPI() {
             val rootNode = objectMapper.readTree(script)
             val secureData = rootNode.path("props").path("pageProps").path("secureData").asText()
 
-            if (secureData.isEmpty()) return false
+            if (secureData.isEmpty()) throw Exception("Gerekli veri bulunamadı")
 
             val decodedData = decryptDizillaResponse(secureData)
 
             if (decodedData.isNullOrEmpty()) {
                 Log.e("DizillaDebug", "HATA: Decoded data boş!")
-                return false
+                throw Exception("Gerekli veri bulunamadı")
             }
 
             var linkFound = false

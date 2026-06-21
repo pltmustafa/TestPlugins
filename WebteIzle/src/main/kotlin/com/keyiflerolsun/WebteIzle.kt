@@ -173,7 +173,7 @@ class WebteIzle : MainAPI() {
             val document = response.document
             val finalUrl = response.url.substringBefore("/hakkinda").substringBefore("/izle")
 
-            val filmId = document.selectFirst("button#wip")?.attr("data-id") ?: return false
+            val filmId = document.selectFirst("button#wip")?.attr("data-id") ?: throw Exception("Gerekli veri bulunamadı")
             Log.d("WBTI", "filmId » $filmId")
 
             val dilList = mutableListOf<String>()
