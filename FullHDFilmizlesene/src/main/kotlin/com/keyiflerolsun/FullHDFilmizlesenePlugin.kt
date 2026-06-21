@@ -6,7 +6,12 @@ import android.content.Context
 
 @CloudstreamPlugin
 class FullHDFilmizlesenePlugin: Plugin() {
+    companion object {
+        var appContext: Context? = null
+    }
+
     override fun load(context: Context) {
+        appContext = context
         registerMainAPI(FullHDFilmizlesene())
         registerExtractorAPI(RapidVid())
         registerExtractorAPI(TRsTX())

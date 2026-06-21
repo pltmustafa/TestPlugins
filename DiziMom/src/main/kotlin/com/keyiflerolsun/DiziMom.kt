@@ -54,14 +54,19 @@ class DiziMom : MainAPI() {
     )
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        val document = app.get("${request.data}${page}/", interceptor = interceptor).document
-        val home     = if (request.data.contains("/tum-bolumler/")) {
-            document.select("div.episode-box").mapNotNull { it.sonBolumler() } 
-        } else {
-            document.select("div.single-item").mapNotNull { it.diziler() }
-        }
+        try {
+            val document = app.get("${request.data}${page}/", interceptor = interceptor).document
+            val home     = if (request.data.contains("/tum-bolumler/")) {
+                document.select("div.episode-box").mapNotNull { it.sonBolumler() } 
+            } else {
+                document.select("div.single-item").mapNotNull { it.diziler() }
+            }
 
-        return newHomePageResponse(request.name, home)
+            return newHomePageResponse(request.name, home)
+        } catch (e: Exception) {
+            ErrorUtils.showPluginError(DiziMomPlugin.appContext, this.name, "MAIN_PAGE", mainUrl)
+            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
+        }
     }
 
     private suspend fun Element.sonBolumler(): SearchResponse? {
@@ -94,75 +99,87 @@ class DiziMom : MainAPI() {
     override suspend fun quickSearch(query: String): List<SearchResponse> = search(query)
 
     override suspend fun load(url: String): LoadResponse? {
-        val document = app.get(url, interceptor = interceptor).document
+        try {
+            val document = app.get(url, interceptor = interceptor).document
 
-        val title       = document.selectFirst("div.title h1")?.text()?.substringBefore(" izle") ?: return null
-        val poster      = getPosterUrl(document.selectFirst("div.category_image img")) ?: return null
-        val year        = document.selectXpath("//div[span[contains(text(), 'Yapım Yılı')]]").text().substringAfter("Yapım Yılı : ").trim().toIntOrNull()
-        val description = document.selectFirst("div.category_desc")?.text()?.trim()
-        val tags        = document.select("div.genres a").mapNotNull { it.text().trim() }
-        val actors      = document.selectXpath("//div[span[contains(text(), 'Oyuncular')]]").text().substringAfter("Oyuncular : ").split(", ").map {
-            Actor(it.trim())
-        }
-
-        val episodes    = document.select("div.bolumust").mapNotNull {
-            val epName    = it.selectFirst("div.baslik")?.text()?.trim() ?: return@mapNotNull null
-            val epHref    = fixUrlNull(it.selectFirst("a")?.attr("href")) ?: return@mapNotNull null
-            val epEpisode = Regex("""(\d+)\.Bölüm""").find(epName)?.groupValues?.get(1)?.toIntOrNull()
-            val epSeason  = Regex("""(\d+)\.Sezon""").find(epName)?.groupValues?.get(1)?.toIntOrNull() ?: 1
-
-            newEpisode(epHref) {
-                this.name    = epName.substringBefore(" izle").replace(title, "").trim()
-                this.season  = epSeason
-                this.episode = epEpisode
+            val title       = document.selectFirst("div.title h1")?.text()?.substringBefore(" izle") ?: return null
+            val poster      = getPosterUrl(document.selectFirst("div.category_image img")) ?: return null
+            val year        = document.selectXpath("//div[span[contains(text(), 'Yapım Yılı')]]").text().substringAfter("Yapım Yılı : ").trim().toIntOrNull()
+            val description = document.selectFirst("div.category_desc")?.text()?.trim()
+            val tags        = document.select("div.genres a").mapNotNull { it.text().trim() }
+            val actors      = document.selectXpath("//div[span[contains(text(), 'Oyuncular')]]").text().substringAfter("Oyuncular : ").split(", ").map {
+                Actor(it.trim())
             }
-        }
 
-        return newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
-            this.posterUrl = poster
-            this.year      = year
-            this.plot      = description
-            this.tags      = tags
-            addActors(actors)
+            val episodes    = document.select("div.bolumust").mapNotNull {
+                val epName    = it.selectFirst("div.baslik")?.text()?.trim() ?: return@mapNotNull null
+                val epHref    = fixUrlNull(it.selectFirst("a")?.attr("href")) ?: return@mapNotNull null
+                val epEpisode = Regex("""(\d+)\.Bölüm""").find(epName)?.groupValues?.get(1)?.toIntOrNull()
+                val epSeason  = Regex("""(\d+)\.Sezon""").find(epName)?.groupValues?.get(1)?.toIntOrNull() ?: 1
+
+                newEpisode(epHref) {
+                    this.name    = epName.substringBefore(" izle").replace(title, "").trim()
+                    this.season  = epSeason
+                    this.episode = epEpisode
+                }
+            }
+
+            return newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
+                this.posterUrl = poster
+                this.year      = year
+                this.plot      = description
+                this.tags      = tags
+                addActors(actors)
+            }
+        } catch (e: Exception) {
+            ErrorUtils.showPluginError(DiziMomPlugin.appContext, this.name, "LOAD_DETAILS", url)
+            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 
     override suspend fun loadLinks(data: String, isCasting: Boolean, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit): Boolean {
-        Log.d("DZM", "data » $data")
+        try {
+            Log.d("DZM", "data » $data")
 
-        val ua = mapOf("User-Agent" to "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36")
+            val ua = mapOf("User-Agent" to "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36")
 
-        app.post(
-            "${mainUrl}/wp-login.php",
-            headers = ua,
-            referer = "${mainUrl}/",
-            data    = mapOf(
-                "log"         to "keyiflerolsun",
-                "pwd"         to "12345",
-                "rememberme"  to "forever",
-                "redirect_to" to mainUrl,
+            app.post(
+                "${mainUrl}/wp-login.php",
+                headers = ua,
+                referer = "${mainUrl}/",
+                data    = mapOf(
+                    "log"         to "keyiflerolsun",
+                    "pwd"         to "12345",
+                    "rememberme"  to "forever",
+                    "redirect_to" to mainUrl,
+                )
             )
-        )
 
-        val document = app.get(data, headers=ua, interceptor = interceptor).document
+            val document = app.get(data, headers=ua, interceptor = interceptor).document
 
-        val iframes     = mutableListOf<String>()
-        val mainIframe = document.selectFirst("div.video p iframe")?.attr("src") ?: return false
-        iframes.add(mainIframe)
+            val iframes     = mutableListOf<String>()
+            val mainIframe = document.selectFirst("div.video p iframe")?.attr("src") ?: return false
+            iframes.add(mainIframe)
 
-        document.select("div.sources a").forEach {
-            val subDocument = app.get(it.attr("href"), headers=ua, interceptor = interceptor).document
-            val subIframe   = subDocument.selectFirst("div.video p iframe")?.attr("src") ?: return@forEach
+            document.select("div.sources a").forEach {
+                val subDocument = app.get(it.attr("href"), headers=ua, interceptor = interceptor).document
+                val subIframe   = subDocument.selectFirst("div.video p iframe")?.attr("src") ?: return@forEach
 
-            iframes.add(subIframe)
+                iframes.add(subIframe)
+            }
+
+            for (iframe in iframes) {
+                Log.d("DZM", "iframe » $iframe")
+                loadExtractor(iframe, "${mainUrl}/", subtitleCallback, callback)
+            }
+
+            return true
+        } catch (e: Exception) {
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                ErrorUtils.showPluginError(DiziMomPlugin.appContext, this.name, "LOAD_LINKS", data)
+            }, 500)
+            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
-
-        for (iframe in iframes) {
-            Log.d("DZM", "iframe » $iframe")
-            loadExtractor(iframe, "${mainUrl}/", subtitleCallback, callback)
-        }
-
-        return true
     }
 
     private fun getPosterUrl(element: Element?): String? {

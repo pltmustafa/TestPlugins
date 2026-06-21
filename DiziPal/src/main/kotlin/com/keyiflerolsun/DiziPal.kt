@@ -102,17 +102,22 @@ class DiziPal : MainAPI() {
     )
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        val document = app.get(
-            request.data, timeout = 10000, interceptor = interceptor, headers = getHeaders(mainUrl)
-        ).document
-        //Log.d("DZP", "Ana sayfa HTML içeriği:\n${document.outerHtml()}")
-        val home     = if (request.data.contains("/yabanci-dizi-izle") || request.data.contains("/hd-film-izle")) {
-            document.select("div.new-added-list div.bg-\\[\\#22232a\\]").mapNotNull { it.sonBolumler() }
-        } else {
-            document.select("div.new-added-list div.bg-\\[\\#22232a\\]").mapNotNull { it.diziler() }
-        }
+        try {
+            val document = app.get(
+                request.data, timeout = 10000, interceptor = interceptor, headers = getHeaders(mainUrl)
+            ).document
+            //Log.d("DZP", "Ana sayfa HTML içeriği:\n${document.outerHtml()}")
+            val home     = if (request.data.contains("/yabanci-dizi-izle") || request.data.contains("/hd-film-izle")) {
+                document.select("div.new-added-list div.bg-\\[\\#22232a\\]").mapNotNull { it.sonBolumler() }
+            } else {
+                document.select("div.new-added-list div.bg-\\[\\#22232a\\]").mapNotNull { it.diziler() }
+            }
 
-        return newHomePageResponse(request.name, home, hasNext=true)
+            return newHomePageResponse(request.name, home, hasNext=true)
+        } catch (e: Exception) {
+            ErrorUtils.showPluginError(DiziPalPlugin.appContext, this.name, "MAIN_PAGE", mainUrl)
+            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
+        }
     }
 
     private fun Element.sonBolumler(): SearchResponse? {
@@ -186,56 +191,61 @@ class DiziPal : MainAPI() {
     override suspend fun quickSearch(query: String): List<SearchResponse> = search(query)
 
     override suspend fun load(url: String): LoadResponse? {
-        val document = app.get(url, interceptor = interceptor, headers = getHeaders(mainUrl)).document
+        try {
+            val document = app.get(url, interceptor = interceptor, headers = getHeaders(mainUrl)).document
 
-        val poster      = document.selectFirst("div.page-top img[alt]")?.attr("src")
-        val year        = document.selectXpath("//div[text()='Yıl']//following-sibling::div").text().trim().toIntOrNull()
-        val description = document.selectFirst("#router-view > div.w-full.pt-5.pr-10 > div > div.w-full > p")?.text()?.trim() 
-            ?: document.selectFirst("div.summary p")?.text()?.trim()
-        val tags        = document.selectXpath("//div[text()='Kategoriler']//following-sibling::div").text().trim().split(" ").map { it.trim() }
-        val duration    = Regex("(\\d+)").find(document.selectXpath("//div[text()='Süre']//following-sibling::div").text())?.value?.toIntOrNull()
+            val poster      = document.selectFirst("div.page-top img[alt]")?.attr("src")
+            val year        = document.selectXpath("//div[text()='Yıl']//following-sibling::div").text().trim().toIntOrNull()
+            val description = document.selectFirst("#router-view > div.w-full.pt-5.pr-10 > div > div.w-full > p")?.text()?.trim() 
+                ?: document.selectFirst("div.summary p")?.text()?.trim()
+            val tags        = document.selectXpath("//div[text()='Kategoriler']//following-sibling::div").text().trim().split(" ").map { it.trim() }
+            val duration    = Regex("(\\d+)").find(document.selectXpath("//div[text()='Süre']//following-sibling::div").text())?.value?.toIntOrNull()
 
-        if (url.contains("/series/")) {
-            val title       = document.selectFirst("div.flex h2")?.text() ?: return null
-            val episodeElements = document.select("div.relative.w-full.flex.items-start.gap-4")
-            val episodes = episodeElements.mapNotNull { element ->
-                // 1. Link ve İsim Bilgisi
-                val linkElement = element.selectFirst("a[data-dizipal-pageloader]") ?: return@mapNotNull null
-                val epHref = fixUrlNull(linkElement.attr("href")) ?: return@mapNotNull null
-                val epName = linkElement.selectFirst("h2")?.text()?.trim() ?: "Bölüm"
+            if (url.contains("/series/")) {
+                val title       = document.selectFirst("div.flex h2")?.text() ?: return null
+                val episodeElements = document.select("div.relative.w-full.flex.items-start.gap-4")
+                val episodes = episodeElements.mapNotNull { element ->
+                    // 1. Link ve İsim Bilgisi
+                    val linkElement = element.selectFirst("a[data-dizipal-pageloader]") ?: return@mapNotNull null
+                    val epHref = fixUrlNull(linkElement.attr("href")) ?: return@mapNotNull null
+                    val epName = linkElement.selectFirst("h2")?.text()?.trim() ?: "Bölüm"
 
-                // 2. Sezon ve Bölüm Metni (Örn: "1. Sezon 1. Bölüm")
-                val infoText = linkElement.selectFirst("div.text-white.text-sm.opacity-80")?.text()?.trim() ?: ""
+                    // 2. Sezon ve Bölüm Metni (Örn: "1. Sezon 1. Bölüm")
+                    val infoText = linkElement.selectFirst("div.text-white.text-sm.opacity-80")?.text()?.trim() ?: ""
 
-                // 3. Regex ile Sayıları Ayıklama (Daha güvenli yöntem)
-                // Bu pattern "1. Sezon 5. Bölüm" gibi bir metinden sayıları çeker.
-                val epSeason = Regex("""(\d+)\.\s*Sezon""").find(infoText)?.groupValues?.get(1)?.toIntOrNull()
-                val epEpisode = Regex("""(\d+)\.\s*Bölüm""").find(infoText)?.groupValues?.get(1)?.toIntOrNull()
+                    // 3. Regex ile Sayıları Ayıklama (Daha güvenli yöntem)
+                    // Bu pattern "1. Sezon 5. Bölüm" gibi bir metinden sayıları çeker.
+                    val epSeason = Regex("""(\d+)\.\s*Sezon""").find(infoText)?.groupValues?.get(1)?.toIntOrNull()
+                    val epEpisode = Regex("""(\d+)\.\s*Bölüm""").find(infoText)?.groupValues?.get(1)?.toIntOrNull()
 
-                newEpisode(epHref) {
-                    this.name    = epName
-                    this.episode = epEpisode
-                    this.season  = epSeason
+                    newEpisode(epHref) {
+                        this.name    = epName
+                        this.episode = epEpisode
+                        this.season  = epSeason
+                    }
+                }
+
+                return newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
+                    this.posterUrl = poster
+                    this.year      = year
+                    this.plot      = description
+                    this.tags      = tags
+                    this.duration  = duration
+                }
+            } else { 
+                val title = document.selectXpath("//div[@class='g-title'][2]/div").text().trim()
+
+                return newMovieLoadResponse(title, url, TvType.Movie, url) {
+                    this.posterUrl = poster
+                    this.year      = year
+                    this.plot      = description
+                    this.tags      = tags
+                    this.duration  = duration
                 }
             }
-
-            return newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
-                this.posterUrl = poster
-                this.year      = year
-                this.plot      = description
-                this.tags      = tags
-                this.duration  = duration
-            }
-        } else { 
-            val title = document.selectXpath("//div[@class='g-title'][2]/div").text().trim()
-
-            return newMovieLoadResponse(title, url, TvType.Movie, url) {
-                this.posterUrl = poster
-                this.year      = year
-                this.plot      = description
-                this.tags      = tags
-                this.duration  = duration
-            }
+        } catch (e: Exception) {
+            ErrorUtils.showPluginError(DiziPalPlugin.appContext, this.name, "LOAD_DETAILS", url)
+            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 
@@ -246,40 +256,47 @@ class DiziPal : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        Log.d("DiziPal", "--> loadLinks ÇAĞRILDI. Gelen URL: $data")
-        val doc = app.get(data).document
-        
-        // Şifreli div'i bul
-        val encryptedText = doc.selectFirst("div[data-rm-k=true]")?.text() ?: ""
-        Log.d("DiziPal", "--> Şifreli metin uzunluğu: ${encryptedText.length}")
-        
-        var iframeUrl = if (encryptedText.isNotEmpty()) {
-            Log.d("DiziPal", "--> Şifreli veri bulundu, decrypt işlemine geçiliyor...")
-            decryptDizipalData(encryptedText)
-        } else {
-            Log.w("DiziPal", "--> DİKKAT: Şifreli veri DOM'da YOK! Fallback iframe aranıyor...")
-            doc.selectFirst("iframe")?.attr("src") ?: ""
-        }
-
-        Log.d("DiziPal", "--> Elde edilen Ham Iframe URL: $iframeUrl")
-
-        if (iframeUrl.isNotEmpty()) {
-            if (iframeUrl.startsWith("//")) {
-                iframeUrl = "https:$iframeUrl"
-            }
-            Log.d("DiziPal", "--> Extractor'a gönderilen Final URL: $iframeUrl")
+        try {
+            Log.d("DiziPal", "--> loadLinks ÇAĞRILDI. Gelen URL: $data")
+            val doc = app.get(data).document
             
-            // Extractor'ı tetikle
-            DizipalPlayer().getUrl(
-                url = iframeUrl,
-                referer = data, // Videonun bulunduğu sayfa
-                subtitleCallback = subtitleCallback,
-                callback = callback
-            )
-        } else {
-            Log.e("DiziPal", "--> HATA: iframeUrl tamamen BOŞ. Video linki bulunamadı!")
+            // Şifreli div'i bul
+            val encryptedText = doc.selectFirst("div[data-rm-k=true]")?.text() ?: ""
+            Log.d("DiziPal", "--> Şifreli metin uzunluğu: ${encryptedText.length}")
+            
+            var iframeUrl = if (encryptedText.isNotEmpty()) {
+                Log.d("DiziPal", "--> Şifreli veri bulundu, decrypt işlemine geçiliyor...")
+                decryptDizipalData(encryptedText)
+            } else {
+                Log.w("DiziPal", "--> DİKKAT: Şifreli veri DOM'da YOK! Fallback iframe aranıyor...")
+                doc.selectFirst("iframe")?.attr("src") ?: ""
+            }
+
+            Log.d("DiziPal", "--> Elde edilen Ham Iframe URL: $iframeUrl")
+
+            if (iframeUrl.isNotEmpty()) {
+                if (iframeUrl.startsWith("//")) {
+                    iframeUrl = "https:$iframeUrl"
+                }
+                Log.d("DiziPal", "--> Extractor'a gönderilen Final URL: $iframeUrl")
+                
+                // Extractor'ı tetikle
+                DizipalPlayer().getUrl(
+                    url = iframeUrl,
+                    referer = data, // Videonun bulunduğu sayfa
+                    subtitleCallback = subtitleCallback,
+                    callback = callback
+                )
+            } else {
+                Log.e("DiziPal", "--> HATA: iframeUrl tamamen BOŞ. Video linki bulunamadı!")
+            }
+            return true
+        } catch (e: Exception) {
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                ErrorUtils.showPluginError(DiziPalPlugin.appContext, this.name, "LOAD_LINKS", data)
+            }, 500)
+            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
-        return true
     }
 
     // 3. DECRYPT VE YARDIMCI FONKSİYON: Şifreyi çözen business logic

@@ -76,24 +76,29 @@ class DiziBox : MainAPI() {
     )
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        val url      = request.data.replace("SAYFA", "$page")
-        val document = app.get(
-            url,
-            cookies     = mapOf(
-                "LockUser"      to "true",
-                "isTrustedUser" to "true",
-                "dbxu"          to "1743289650198"
-            ),
-            interceptor = interceptor, cacheTime = 60
-        ).document
-        if (request.name == "Dizi Arşivi") {
-            val home = document.select("article.detailed-article").mapNotNull { it.toMainPageResult() }
-            return newHomePageResponse(request.name, home)
+        try {
+            val url      = request.data.replace("SAYFA", "$page")
+            val document = app.get(
+                url,
+                cookies     = mapOf(
+                    "LockUser"      to "true",
+                    "isTrustedUser" to "true",
+                    "dbxu"          to "1743289650198"
+                ),
+                interceptor = interceptor, cacheTime = 60
+            ).document
+            if (request.name == "Dizi Arşivi") {
+                val home = document.select("article.detailed-article").mapNotNull { it.toMainPageResult() }
+                return newHomePageResponse(request.name, home)
+            }
+            val home = document.select("article.article-series-poster").mapNotNull {
+            it.toMainPageResult()
         }
-        val home = document.select("article.article-series-poster").mapNotNull {
-        it.toMainPageResult()
-    }
-        return newHomePageResponse(request.name, home)
+            return newHomePageResponse(request.name, home)
+        } catch (e: Exception) {
+            ErrorUtils.showPluginError(DiziBoxPlugin.appContext, this.name, "MAIN_PAGE", mainUrl)
+            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
+        }
     }
 
 private fun Element.toMainPageResult(): SearchResponse? {
@@ -125,29 +130,9 @@ private fun Element.toMainPageResult(): SearchResponse? {
     override suspend fun quickSearch(query: String): List<SearchResponse> = search(query)
 
     override suspend fun load(url: String): LoadResponse? {
-        val document = app.get(
-            url,
-            cookies     = mapOf(
-                "LockUser"      to "true",
-                "isTrustedUser" to "true",
-                "dbxu"          to "1743289650198"
-            ),
-            interceptor = interceptor
-        ).document
-
-        val title       = document.selectFirst("div.tv-overview h1 a")?.text()?.trim() ?: return null
-        val poster      = fixUrlNull(document.selectFirst("div.tv-overview figure img")?.attr("src"))
-        val description = document.selectFirst("div.tv-story p")?.text()?.trim()
-        val year        = document.selectFirst("a[href*='/yil/']")?.text()?.trim()?.toIntOrNull()
-        val tags        = document.select("a[href*='/tur/']").map { it.text() }
-        val actors      = document.select("a[href*='/oyuncu/']").map { Actor(it.text()) }
-        val trailer     = document.selectFirst("div.tv-overview iframe")?.attr("src")
-
-        val episodeList = mutableListOf<Episode>()
-        document.select("div#seasons-list a").forEach {
-            val epUrl = fixUrlNull(it.attr("href")) ?: return@forEach
-            val epDoc = app.get(
-                epUrl,
+        try {
+            val document = app.get(
+                url,
                 cookies     = mapOf(
                     "LockUser"      to "true",
                     "isTrustedUser" to "true",
@@ -156,27 +141,52 @@ private fun Element.toMainPageResult(): SearchResponse? {
                 interceptor = interceptor
             ).document
 
-            epDoc.select("article.grid-box").forEach ep@ { epElem ->
-                val epTitle   = epElem.selectFirst("div.post-title a")?.text()?.trim() ?: return@ep
-                val epHref    = fixUrlNull(epElem.selectFirst("div.post-title a")?.attr("href")) ?: return@ep
-                val epSeason  = Regex("""(\d+)\. ?Sezon""").find(epTitle)?.groupValues?.get(1)?.toIntOrNull() ?: 1
-                val epEpisode = Regex("""(\d+)\. ?Bölüm""").find(epTitle)?.groupValues?.get(1)?.toIntOrNull()
+            val title       = document.selectFirst("div.tv-overview h1 a")?.text()?.trim() ?: return null
+            val poster      = fixUrlNull(document.selectFirst("div.tv-overview figure img")?.attr("src"))
+            val description = document.selectFirst("div.tv-story p")?.text()?.trim()
+            val year        = document.selectFirst("a[href*='/yil/']")?.text()?.trim()?.toIntOrNull()
+            val tags        = document.select("a[href*='/tur/']").map { it.text() }
+            val actors      = document.select("a[href*='/oyuncu/']").map { Actor(it.text()) }
+            val trailer     = document.selectFirst("div.tv-overview iframe")?.attr("src")
 
-                episodeList.add(newEpisode(epHref) {
-                    this.name = epTitle
-                    this.season = epSeason
-                    this.episode = epEpisode
-                })
+            val episodeList = mutableListOf<Episode>()
+            document.select("div#seasons-list a").forEach {
+                val epUrl = fixUrlNull(it.attr("href")) ?: return@forEach
+                val epDoc = app.get(
+                    epUrl,
+                    cookies     = mapOf(
+                        "LockUser"      to "true",
+                        "isTrustedUser" to "true",
+                        "dbxu"          to "1743289650198"
+                    ),
+                    interceptor = interceptor
+                ).document
+
+                epDoc.select("article.grid-box").forEach ep@ { epElem ->
+                    val epTitle   = epElem.selectFirst("div.post-title a")?.text()?.trim() ?: return@ep
+                    val epHref    = fixUrlNull(epElem.selectFirst("div.post-title a")?.attr("href")) ?: return@ep
+                    val epSeason  = Regex("""(\d+)\. ?Sezon""").find(epTitle)?.groupValues?.get(1)?.toIntOrNull() ?: 1
+                    val epEpisode = Regex("""(\d+)\. ?Bölüm""").find(epTitle)?.groupValues?.get(1)?.toIntOrNull()
+
+                    episodeList.add(newEpisode(epHref) {
+                        this.name = epTitle
+                        this.season = epSeason
+                        this.episode = epEpisode
+                    })
+                }
             }
-        }
 
-        return newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodeList) {
-            this.posterUrl = poster
-            this.plot      = description
-            this.year      = year
-            this.tags      = tags
-            addActors(actors)
-            addTrailer(trailer)
+            return newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodeList) {
+                this.posterUrl = poster
+                this.plot      = description
+                this.year      = year
+                this.tags      = tags
+                addActors(actors)
+                addTrailer(trailer)
+            }
+        } catch (e: Exception) {
+            ErrorUtils.showPluginError(DiziBoxPlugin.appContext, this.name, "LOAD_DETAILS", url)
+            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 
@@ -269,25 +279,10 @@ private fun Element.toMainPageResult(): SearchResponse? {
     }
 
     override suspend fun loadLinks(data: String, isCasting: Boolean, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit): Boolean {
-        Log.d("DZBX", "data » $data")
-        val document = app.get(
-            data,
-            cookies     = mapOf(
-                "LockUser"      to "true",
-                "isTrustedUser" to "true",
-                "dbxu"          to "1743289650198"
-            ),
-            interceptor = interceptor
-        ).document
-        var iframe = document.selectFirst("div#video-area iframe")?.attr("src")?: return false
-        Log.d("DZBX", "iframe » $iframe")
-
-        iframeDecode(data, iframe, subtitleCallback, callback)
-
-        document.select("div.video-toolbar option[value]").forEach {
-            val altLink = it.attr("value")
-            val subDoc  = app.get(
-                altLink,
+        try {
+            Log.d("DZBX", "data » $data")
+            val document = app.get(
+                data,
                 cookies     = mapOf(
                     "LockUser"      to "true",
                     "isTrustedUser" to "true",
@@ -295,12 +290,34 @@ private fun Element.toMainPageResult(): SearchResponse? {
                 ),
                 interceptor = interceptor
             ).document
-            iframe = subDoc.selectFirst("div#video-area iframe")?.attr("src")?: return false
+            var iframe = document.selectFirst("div#video-area iframe")?.attr("src")?: return false
             Log.d("DZBX", "iframe » $iframe")
 
             iframeDecode(data, iframe, subtitleCallback, callback)
-        }
 
-        return true
+            document.select("div.video-toolbar option[value]").forEach {
+                val altLink = it.attr("value")
+                val subDoc  = app.get(
+                    altLink,
+                    cookies     = mapOf(
+                        "LockUser"      to "true",
+                        "isTrustedUser" to "true",
+                        "dbxu"          to "1743289650198"
+                    ),
+                    interceptor = interceptor
+                ).document
+                iframe = subDoc.selectFirst("div#video-area iframe")?.attr("src")?: return false
+                Log.d("DZBX", "iframe » $iframe")
+
+                iframeDecode(data, iframe, subtitleCallback, callback)
+            }
+
+            return true
+        } catch (e: Exception) {
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                ErrorUtils.showPluginError(DiziBoxPlugin.appContext, this.name, "LOAD_LINKS", data)
+            }, 500)
+            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
+        }
     }
 }

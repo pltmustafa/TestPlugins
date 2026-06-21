@@ -49,10 +49,15 @@ class FilmModu : MainAPI() {
     )
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        val document = app.get("${request.data}?page=${page}").document
-        val home     = document.select("div.movie").mapNotNull { it.toMainPageResult() }
+        try {
+            val document = app.get("${request.data}?page=${page}").document
+            val home     = document.select("div.movie").mapNotNull { it.toMainPageResult() }
 
-        return newHomePageResponse(request.name, home)
+            return newHomePageResponse(request.name, home)
+        } catch (e: Exception) {
+            ErrorUtils.showPluginError(FilmModuPlugin.appContext, this.name, "MAIN_PAGE", mainUrl)
+            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
+        }
     }
 
     private fun Element.toMainPageResult(): SearchResponse? {
@@ -72,67 +77,79 @@ class FilmModu : MainAPI() {
     override suspend fun quickSearch(query: String): List<SearchResponse> = search(query)
 
     override suspend fun load(url: String): LoadResponse? {
-        val document = app.get(url).document
+        try {
+            val document = app.get(url).document
 
-        val orgTitle    = document.selectFirst("div.titles h1")?.text()?.trim() ?: return null
-        val altTitle    = document.selectFirst("div.titles h2")?.text()?.trim() ?: ""
-        val title       = if (altTitle.isNotEmpty()) "$orgTitle - $altTitle" else orgTitle
-        val poster      = fixUrlNull(document.selectFirst("img.img-responsive")?.attr("src"))
-        val description = document.selectFirst("p[itemprop='description']")?.text()?.trim()
-        val year        = document.selectFirst("span[itemprop='dateCreated']")?.text()?.trim()?.toIntOrNull()
-        val tags        = document.select("div.description a[href*='-kategori/']").map { it.text() }
-        val actors      = document.select("div.description a[href*='-oyuncu-']").map { Actor(it.selectFirst("span")!!.text()) }
-        val trailer     = document.selectFirst("div.container iframe")?.attr("src")
+            val orgTitle    = document.selectFirst("div.titles h1")?.text()?.trim() ?: return null
+            val altTitle    = document.selectFirst("div.titles h2")?.text()?.trim() ?: ""
+            val title       = if (altTitle.isNotEmpty()) "$orgTitle - $altTitle" else orgTitle
+            val poster      = fixUrlNull(document.selectFirst("img.img-responsive")?.attr("src"))
+            val description = document.selectFirst("p[itemprop='description']")?.text()?.trim()
+            val year        = document.selectFirst("span[itemprop='dateCreated']")?.text()?.trim()?.toIntOrNull()
+            val tags        = document.select("div.description a[href*='-kategori/']").map { it.text() }
+            val actors      = document.select("div.description a[href*='-oyuncu-']").map { Actor(it.selectFirst("span")!!.text()) }
+            val trailer     = document.selectFirst("div.container iframe")?.attr("src")
 
-        return newMovieLoadResponse(title, url, TvType.Movie, url) {
-            this.posterUrl = poster
-            this.plot      = description
-            this.year      = year
-            this.tags      = tags
-            addActors(actors)
-            addTrailer(trailer)
+            return newMovieLoadResponse(title, url, TvType.Movie, url) {
+                this.posterUrl = poster
+                this.plot      = description
+                this.year      = year
+                this.tags      = tags
+                addActors(actors)
+                addTrailer(trailer)
+            }
+        } catch (e: Exception) {
+            ErrorUtils.showPluginError(FilmModuPlugin.appContext, this.name, "LOAD_DETAILS", url)
+            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 
     override suspend fun loadLinks(data: String, isCasting: Boolean, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit): Boolean {
-        Log.d("FLMMD", "data » $data")
-        val document = app.get(data).document
+        try {
+            Log.d("FLMMD", "data » $data")
+            val document = app.get(data).document
 
-        document.select("div.alternates a").forEach {
-            val altLink = fixUrlNull(it.attr("href")) ?: return@forEach
-            val altName = it.text()
-            if (altName == "Fragman") return@forEach
+            document.select("div.alternates a").forEach {
+                val altLink = fixUrlNull(it.attr("href")) ?: return@forEach
+                val altName = it.text()
+                if (altName == "Fragman") return@forEach
 
-            val altReq  = app.get(altLink)
-            val vidId   = Regex("""var videoId = '(.*)'""").find(altReq.text)?.groupValues?.get(1) ?: return@forEach
-            val vidType = Regex("""var videoType = '(.*)'""").find(altReq.text)?.groupValues?.get(1) ?: return@forEach
+                val altReq  = app.get(altLink)
+                val vidId   = Regex("""var videoId = '(.*)'""").find(altReq.text)?.groupValues?.get(1) ?: return@forEach
+                val vidType = Regex("""var videoType = '(.*)'""").find(altReq.text)?.groupValues?.get(1) ?: return@forEach
 
-            val vidReq = app.get("${mainUrl}/get-source?movie_id=${vidId}&type=${vidType}").parsedSafe<GetSource>() ?: return@forEach
+                val vidReq = app.get("${mainUrl}/get-source?movie_id=${vidId}&type=${vidType}").parsedSafe<GetSource>() ?: return@forEach
 
-            if (vidReq.subtitle != null) {
-                subtitleCallback.invoke(
-                    SubtitleFile(
-                        lang = "Türkçe",
-                        url  = fixUrl(vidReq.subtitle)
+                if (vidReq.subtitle != null) {
+                    subtitleCallback.invoke(
+                        SubtitleFile(
+                            lang = "Türkçe",
+                            url  = fixUrl(vidReq.subtitle)
+                        )
                     )
-                )
+                }
+
+                vidReq.sources?.forEach { source ->
+                    callback.invoke(
+                        newExtractorLink(
+                            source  = "${this.name} - $altName",
+                            name    = "${this.name} - $altName",
+                            url     = fixUrl(source.src),
+                            type    = ExtractorLinkType.M3U8
+                        ) {
+                           headers = mapOf("Referer" to "${mainUrl}/")
+                           quality = getQualityFromName(source.label)
+                }
+                    )
+                }
             }
 
-            vidReq.sources?.forEach { source ->
-                callback.invoke(
-                    newExtractorLink(
-                        source  = "${this.name} - $altName",
-                        name    = "${this.name} - $altName",
-                        url     = fixUrl(source.src),
-                        type    = ExtractorLinkType.M3U8
-                    ) {
-                       headers = mapOf("Referer" to "${mainUrl}/")
-                       quality = getQualityFromName(source.label)
-            }
-                )
-            }
+            return true
+        } catch (e: Exception) {
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                ErrorUtils.showPluginError(FilmModuPlugin.appContext, this.name, "LOAD_LINKS", data)
+            }, 500)
+            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
-
-        return true
     }
 }

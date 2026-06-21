@@ -47,15 +47,20 @@ class Sinewix : MainAPI() {
     )
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        val response = app.get("${request.data}?page=$page", headers = sineHeaders).text
-        
-        val items = if (request.name == "Yeni Bölümler") {
-            parseJson<SineWixResponseHash>(response).data?.mapNotNull { it.toSearchResponse() }
-        } else {
-            parseJson<SineWixYeniBolumResponse>(response).data?.mapNotNull { it.toSearchResponse() }
-        }
+        try {
+            val response = app.get("${request.data}?page=$page", headers = sineHeaders).text
+            
+            val items = if (request.name == "Yeni Bölümler") {
+                parseJson<SineWixResponseHash>(response).data?.mapNotNull { it.toSearchResponse() }
+            } else {
+                parseJson<SineWixYeniBolumResponse>(response).data?.mapNotNull { it.toSearchResponse() }
+            }
 
-        return newHomePageResponse(request.name, items ?: emptyList())
+            return newHomePageResponse(request.name, items ?: emptyList())
+        } catch (e: Exception) {
+            ErrorUtils.showPluginError(SinewixPlugin.appContext, this.name, "MAIN_PAGE", mainUrl)
+            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
+        }
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
@@ -65,40 +70,45 @@ class Sinewix : MainAPI() {
     }
 
     override suspend fun load(url: String): LoadResponse? {
-        val responseText = app.get(url, headers = sineHeaders).text
-        val it = parseJson<SineWixIcerikler>(responseText)
-        
-        val title = it.name ?: it.title ?: return null
-        val poster = it.posterPath ?: it.backdropPath ?: it.backdropPathTv ?: ""
-        val type = if (url.contains("serie") || it.type == "serie") TvType.TvSeries 
-                   else if (url.contains("anime") || it.type == "anime") TvType.Anime
-                   else TvType.Movie
-        
-        return if (type == TvType.TvSeries || type == TvType.Anime) {
-            val episodes = it.seasons?.flatMap { season ->
-                season.episodes?.map { episode ->
-                    val videoLink = episode.videos?.firstOrNull()?.link
-                    newEpisode(videoLink ?: "") {
-                        this.name = episode.name ?: "Bölüm ${episode.episodeNumber}"
-                        this.season = season.seasonNumber
-                        this.episode = episode.episodeNumber
-                        this.posterUrl = episode.stillPath ?: episode.stillPathTv
-                    }
-                } ?: emptyList()
-            } ?: emptyList()
+        try {
+            val responseText = app.get(url, headers = sineHeaders).text
+            val it = parseJson<SineWixIcerikler>(responseText)
             
-            newTvSeriesLoadResponse(title, url, type, episodes) {
-                this.posterUrl = poster
-                this.plot = it.overview
-                this.year = it.releaseDate?.split("-")?.firstOrNull()?.toIntOrNull()
+            val title = it.name ?: it.title ?: return null
+            val poster = it.posterPath ?: it.backdropPath ?: it.backdropPathTv ?: ""
+            val type = if (url.contains("serie") || it.type == "serie") TvType.TvSeries 
+                       else if (url.contains("anime") || it.type == "anime") TvType.Anime
+                       else TvType.Movie
+            
+            return if (type == TvType.TvSeries || type == TvType.Anime) {
+                val episodes = it.seasons?.flatMap { season ->
+                    season.episodes?.map { episode ->
+                        val videoLink = episode.videos?.firstOrNull()?.link
+                        newEpisode(videoLink ?: "") {
+                            this.name = episode.name ?: "Bölüm ${episode.episodeNumber}"
+                            this.season = season.seasonNumber
+                            this.episode = episode.episodeNumber
+                            this.posterUrl = episode.stillPath ?: episode.stillPathTv
+                        }
+                    } ?: emptyList()
+                } ?: emptyList()
+                
+                newTvSeriesLoadResponse(title, url, type, episodes) {
+                    this.posterUrl = poster
+                    this.plot = it.overview
+                    this.year = it.releaseDate?.split("-")?.firstOrNull()?.toIntOrNull()
+                }
+            } else {
+                val videoLink = it.videos?.firstOrNull()?.link ?: ""
+                newMovieLoadResponse(title, url, type, videoLink) {
+                    this.posterUrl = poster
+                    this.plot = it.overview
+                    this.year = it.releaseDate?.split("-")?.firstOrNull()?.toIntOrNull()
+                }
             }
-        } else {
-            val videoLink = it.videos?.firstOrNull()?.link ?: ""
-            newMovieLoadResponse(title, url, type, videoLink) {
-                this.posterUrl = poster
-                this.plot = it.overview
-                this.year = it.releaseDate?.split("-")?.firstOrNull()?.toIntOrNull()
-            }
+        } catch (e: Exception) {
+            ErrorUtils.showPluginError(SinewixPlugin.appContext, this.name, "LOAD_DETAILS", url)
+            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 
@@ -108,9 +118,16 @@ class Sinewix : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        if (data.isBlank()) return false
-        loadExtractor(data, subtitleCallback, callback)
-        return true
+        try {
+            if (data.isBlank()) return false
+            loadExtractor(data, subtitleCallback, callback)
+            return true
+        } catch (e: Exception) {
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                ErrorUtils.showPluginError(SinewixPlugin.appContext, this.name, "LOAD_LINKS", data)
+            }, 500)
+            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
+        }
     }
 
     private fun SineWixIcerikler.toSearchResponse(): SearchResponse? {

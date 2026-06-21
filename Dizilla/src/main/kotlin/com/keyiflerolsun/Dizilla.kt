@@ -258,7 +258,8 @@ class Dizilla : MainAPI() {
         } catch (e: Exception) {
             println("Dizilla DEBUG - getMainPage exception: ${e.message}")
             e.printStackTrace()
-            newHomePageResponse(request.name, emptyList())
+            ErrorUtils.showPluginError(DizillaPlugin.appContext, this.name, "MAIN_PAGE", mainUrl)
+            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 
@@ -359,47 +360,52 @@ class Dizilla : MainAPI() {
     override suspend fun quickSearch(query: String): List<SearchResponse> = search(query)
 
     override suspend fun load(url: String): LoadResponse? {
-        val mainReq = app.get(url, interceptor = interceptor)
-        val document = mainReq.document
-        val title = document.selectFirst("div.poster.poster h2")?.text() ?: return null
-        val poster = fixPosterUrl(fixUrlNull(document.selectFirst("div.w-full.page-top.relative img")?.attr("src")))
-        val year =
-            document.select("div.w-fit.min-w-fit")[1].selectFirst("span.text-sm.opacity-60")?.text()
-                ?.split(" ")?.last()?.toIntOrNull()
-        val description = document.selectFirst("div.mt-2.text-sm")?.text()?.trim()
-        val tags = document.selectFirst("div.poster.poster h3")?.text()?.split(",")?.map { it }
-        val actors = document.select("div.global-box h5").map {
-            Actor(it.text())
-        }
-
-        val episodeses = mutableListOf<Episode>()
-
-        for (sezon in document.select("div.flex.items-center.flex-wrap.gap-2.mb-4 a")) {
-            val sezonhref = fixUrl(sezon.attr("href"))
-            val sezonReq = app.get(sezonhref)
-            val split = sezonhref.split("-")
-            val season = split[split.size-2].toIntOrNull()
-            val sezonDoc = sezonReq.document
-            val episodes = sezonDoc.select("div.episodes")
-            for (bolum in episodes.select("div.cursor-pointer")) {
-                val epName = bolum.select("a").last()?.text() ?: continue
-                val epHref = fixUrlNull(bolum.select("a").last()?.attr("href")) ?: continue
-                val epEpisode = bolum.selectFirst("a")?.text()?.trim()?.toIntOrNull()
-                val newEpisode = newEpisode(epHref) {
-                    this.name = epName
-                    this.season = season
-                    this.episode = epEpisode
-                }
-                episodeses.add(newEpisode)
+        try {
+            val mainReq = app.get(url, interceptor = interceptor)
+            val document = mainReq.document
+            val title = document.selectFirst("div.poster.poster h2")?.text() ?: return null
+            val poster = fixPosterUrl(fixUrlNull(document.selectFirst("div.w-full.page-top.relative img")?.attr("src")))
+            val year =
+                document.select("div.w-fit.min-w-fit")[1].selectFirst("span.text-sm.opacity-60")?.text()
+                    ?.split(" ")?.last()?.toIntOrNull()
+            val description = document.selectFirst("div.mt-2.text-sm")?.text()?.trim()
+            val tags = document.selectFirst("div.poster.poster h3")?.text()?.split(",")?.map { it }
+            val actors = document.select("div.global-box h5").map {
+                Actor(it.text())
             }
-        }
 
-        return newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodeses) {
-            this.posterUrl = poster
-            this.year = year
-            this.plot = description
-            this.tags = tags
-            addActors(actors)
+            val episodeses = mutableListOf<Episode>()
+
+            for (sezon in document.select("div.flex.items-center.flex-wrap.gap-2.mb-4 a")) {
+                val sezonhref = fixUrl(sezon.attr("href"))
+                val sezonReq = app.get(sezonhref)
+                val split = sezonhref.split("-")
+                val season = split[split.size-2].toIntOrNull()
+                val sezonDoc = sezonReq.document
+                val episodes = sezonDoc.select("div.episodes")
+                for (bolum in episodes.select("div.cursor-pointer")) {
+                    val epName = bolum.select("a").last()?.text() ?: continue
+                    val epHref = fixUrlNull(bolum.select("a").last()?.attr("href")) ?: continue
+                    val epEpisode = bolum.selectFirst("a")?.text()?.trim()?.toIntOrNull()
+                    val newEpisode = newEpisode(epHref) {
+                        this.name = epName
+                        this.season = season
+                        this.episode = epEpisode
+                    }
+                    episodeses.add(newEpisode)
+                }
+            }
+
+            return newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodeses) {
+                this.posterUrl = poster
+                this.year = year
+                this.plot = description
+                this.tags = tags
+                addActors(actors)
+            }
+        } catch (e: Exception) {
+            ErrorUtils.showPluginError(DizillaPlugin.appContext, this.name, "LOAD_DETAILS", url)
+            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 
@@ -409,13 +415,13 @@ class Dizilla : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        val document = app.get(data, interceptor = interceptor).document
-        val script = document.selectFirst("script#__NEXT_DATA__")?.data() ?: return false
+        try {
+            val document = app.get(data, interceptor = interceptor).document
+            val script = document.selectFirst("script#__NEXT_DATA__")?.data() ?: return false
 
-        val objectMapper = ObjectMapper().registerModule(KotlinModule.Builder().build())
-        objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+            val objectMapper = ObjectMapper().registerModule(KotlinModule.Builder().build())
+            objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
 
-        return try {
             val rootNode = objectMapper.readTree(script)
             val secureData = rootNode.path("props").path("pageProps").path("secureData").asText()
 
@@ -466,12 +472,13 @@ class Dizilla : MainAPI() {
                 Log.e("DizillaDebug", "HATA: Regex taraması link bulamadı. Ham Veri: ${decodedData.take(500)}")
             }
 
-            linkFound
+            return linkFound
 
         } catch (e: Exception) {
-            Log.e("DizillaDebug", "Kritik Hata: ${e.message}")
-            e.printStackTrace()
-            false
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                ErrorUtils.showPluginError(DizillaPlugin.appContext, this.name, "LOAD_LINKS", data)
+            }, 500)
+            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 

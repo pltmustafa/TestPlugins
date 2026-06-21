@@ -91,28 +91,33 @@ class HDFilmCehennemi : MainAPI() {
     )
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        val objectMapper = ObjectMapper().registerModule(KotlinModule.Builder().build())
-        objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-        val url = request.data.replace("sayfano", page.toString())
-        val headers = mapOf(
-            "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:137.0) Gecko/20100101 Firefox/137.0",
-            "user-agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:137.0) Gecko/20100101 Firefox/137.0",
-            "Accept" to "*/*", "X-Requested-With" to "fetch"
-        )
-        val doc = app.get(url, headers = headers, referer = mainUrl, interceptor = interceptor)
-        val home: List<SearchResponse>?
-        if (!doc.toString().contains("Sayfa Bulunamadı")) {
-            try {
-                val aa: HDFC = objectMapper.readValue(doc.toString())
-                val document = Jsoup.parse(aa.html)
+        try {
+            val objectMapper = ObjectMapper().registerModule(KotlinModule.Builder().build())
+            objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+            val url = request.data.replace("sayfano", page.toString())
+            val headers = mapOf(
+                "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:137.0) Gecko/20100101 Firefox/137.0",
+                "user-agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:137.0) Gecko/20100101 Firefox/137.0",
+                "Accept" to "*/*", "X-Requested-With" to "fetch"
+            )
+            val doc = app.get(url, headers = headers, referer = mainUrl, interceptor = interceptor)
+            val home: List<SearchResponse>?
+            if (!doc.toString().contains("Sayfa Bulunamadı")) {
+                try {
+                    val aa: HDFC = objectMapper.readValue(doc.toString())
+                    val document = Jsoup.parse(aa.html)
 
-                home = document.select("a").mapNotNull { it.toSearchResult() }
-                return newHomePageResponse(request.name, home)
-            } catch (e: Exception) {
-                Log.e("HDCH_Log", "Ana sayfa JSON okuma hatası: ${e.message}")
+                    home = document.select("a").mapNotNull { it.toSearchResult() }
+                    return newHomePageResponse(request.name, home)
+                } catch (e: Exception) {
+                    Log.e("HDCH_Log", "Ana sayfa JSON okuma hatası: ${e.message}")
+                }
             }
+            return newHomePageResponse(request.name, emptyList())
+        } catch (e: Exception) {
+            ErrorUtils.showPluginError(HDFilmCehennemiPlugin.appContext, this.name, "MAIN_PAGE", mainUrl)
+            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
-        return newHomePageResponse(request.name, emptyList())
     }
 
     private fun Element.toSearchResult(): SearchResponse? {
@@ -148,63 +153,68 @@ class HDFilmCehennemi : MainAPI() {
     }
 
     override suspend fun load(url: String): LoadResponse? {
-        val document = app.get(url, interceptor = interceptor).document
+        try {
+            val document = app.get(url, interceptor = interceptor).document
 
-        val title       = document.selectFirst("h1.section-title")?.text()?.substringBefore(" izle") ?: return null
-        val poster      = fixUrlNull(document.select("aside.post-info-poster img.lazyload").lastOrNull()?.attr("data-src"))
-        val tags        = document.select("div.post-info-genres a").map { it.text() }
-        val year        = document.selectFirst("div.post-info-year-country a")?.text()?.trim()?.toIntOrNull()
-        val tvType      = if (document.select("div.seasons").isEmpty()) TvType.Movie else TvType.TvSeries
-        val description = document.selectFirst("article.post-info-content > p")?.text()?.trim()
-        val actors      = document.select("div.post-info-cast a").map {
-            Actor(it.selectFirst("strong")!!.text(), it.select("img").attr("data-src"))
-        }
+            val title       = document.selectFirst("h1.section-title")?.text()?.substringBefore(" izle") ?: return null
+            val poster      = fixUrlNull(document.select("aside.post-info-poster img.lazyload").lastOrNull()?.attr("data-src"))
+            val tags        = document.select("div.post-info-genres a").map { it.text() }
+            val year        = document.selectFirst("div.post-info-year-country a")?.text()?.trim()?.toIntOrNull()
+            val tvType      = if (document.select("div.seasons").isEmpty()) TvType.Movie else TvType.TvSeries
+            val description = document.selectFirst("article.post-info-content > p")?.text()?.trim()
+            val actors      = document.select("div.post-info-cast a").map {
+                Actor(it.selectFirst("strong")!!.text(), it.select("img").attr("data-src"))
+            }
 
-        val recommendations = document.select("div.section-slider-container div.slider-slide").mapNotNull {
-                val recName      = it.selectFirst("a")?.attr("title") ?: return@mapNotNull null
-                val recHref      = fixUrlNull(it.selectFirst("a")?.attr("href")) ?: return@mapNotNull null
-                val recPosterUrl = fixUrlNull(it.selectFirst("img")?.attr("data-src")) ?: fixUrlNull(it.selectFirst("img")?.attr("src"))
+            val recommendations = document.select("div.section-slider-container div.slider-slide").mapNotNull {
+                    val recName      = it.selectFirst("a")?.attr("title") ?: return@mapNotNull null
+                    val recHref      = fixUrlNull(it.selectFirst("a")?.attr("href")) ?: return@mapNotNull null
+                    val recPosterUrl = fixUrlNull(it.selectFirst("img")?.attr("data-src")) ?: fixUrlNull(it.selectFirst("img")?.attr("src"))
 
-                newTvSeriesSearchResponse(recName, recHref, TvType.TvSeries) {
-                    this.posterUrl = recPosterUrl
+                    newTvSeriesSearchResponse(recName, recHref, TvType.TvSeries) {
+                        this.posterUrl = recPosterUrl
+                    }
+                }
+
+            return if (tvType == TvType.TvSeries) {
+                val trailer  = document.selectFirst("div.post-info-trailer button")?.attr("data-modal")?.substringAfter("trailer/", "")?.let { if (it.isNotEmpty()) "https://www.youtube.com/watch?v=$it" else null }
+                val episodes = document.select("div.seasons-tab-content a").mapNotNull {
+                    val epName    = it.selectFirst("h4")?.text()?.trim() ?: return@mapNotNull null
+                    val epHref    = fixUrlNull(it.attr("href")) ?: return@mapNotNull null
+                    val epEpisode = Regex("""(\d+)\. ?Bölüm""").find(epName)?.groupValues?.get(1)?.toIntOrNull()
+                    val epSeason  = Regex("""(\d+)\. ?Sezon""").find(epName)?.groupValues?.get(1)?.toIntOrNull() ?: 1
+
+                    newEpisode(epHref) {
+                        this.name = epName
+                        this.season = epSeason
+                        this.episode = epEpisode
+                    }
+                }
+
+                newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
+                    this.posterUrl       = poster
+                    this.year            = year
+                    this.plot            = description
+                    this.tags            = tags
+                    this.recommendations = recommendations
+                    addActors(actors)
+                    addTrailer(trailer)
+                }
+            } else {
+                val trailer = document.selectFirst("div.post-info-trailer button")?.attr("data-modal")?.substringAfter("trailer/", "")?.let { if (it.isNotEmpty()) "https://www.youtube.com/watch?v=$it" else null }
+                newMovieLoadResponse(title, url, TvType.Movie, url) {
+                    this.posterUrl       = poster
+                    this.year            = year
+                    this.plot            = description
+                    this.tags            = tags
+                    this.recommendations = recommendations
+                    addActors(actors)
+                    addTrailer(trailer)
                 }
             }
-
-        return if (tvType == TvType.TvSeries) {
-            val trailer  = document.selectFirst("div.post-info-trailer button")?.attr("data-modal")?.substringAfter("trailer/", "")?.let { if (it.isNotEmpty()) "https://www.youtube.com/watch?v=$it" else null }
-            val episodes = document.select("div.seasons-tab-content a").mapNotNull {
-                val epName    = it.selectFirst("h4")?.text()?.trim() ?: return@mapNotNull null
-                val epHref    = fixUrlNull(it.attr("href")) ?: return@mapNotNull null
-                val epEpisode = Regex("""(\d+)\. ?Bölüm""").find(epName)?.groupValues?.get(1)?.toIntOrNull()
-                val epSeason  = Regex("""(\d+)\. ?Sezon""").find(epName)?.groupValues?.get(1)?.toIntOrNull() ?: 1
-
-                newEpisode(epHref) {
-                    this.name = epName
-                    this.season = epSeason
-                    this.episode = epEpisode
-                }
-            }
-
-            newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
-                this.posterUrl       = poster
-                this.year            = year
-                this.plot            = description
-                this.tags            = tags
-                this.recommendations = recommendations
-                addActors(actors)
-                addTrailer(trailer)
-            }
-        } else {
-            val trailer = document.selectFirst("div.post-info-trailer button")?.attr("data-modal")?.substringAfter("trailer/", "")?.let { if (it.isNotEmpty()) "https://www.youtube.com/watch?v=$it" else null }
-            newMovieLoadResponse(title, url, TvType.Movie, url) {
-                this.posterUrl       = poster
-                this.year            = year
-                this.plot            = description
-                this.tags            = tags
-                this.recommendations = recommendations
-                addActors(actors)
-                addTrailer(trailer)
-            }
+        } catch (e: Exception) {
+            ErrorUtils.showPluginError(HDFilmCehennemiPlugin.appContext, this.name, "LOAD_DETAILS", url)
+            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 
@@ -326,36 +336,43 @@ override suspend fun loadLinks(
     subtitleCallback: (SubtitleFile) -> Unit,
     callback: (ExtractorLink) -> Unit
 ): Boolean {
-    Log.d("HDCH_Extractor", "loadLinks processing: $data")
-    val document = app.get(data, interceptor = interceptor).document
+    try {
+        Log.d("HDCH_Extractor", "loadLinks processing: $data")
+        val document = app.get(data, interceptor = interceptor).document
 
-    document.select("div.alternative-links").map { element ->
-        element to element.attr("data-lang").uppercase()
-    }.forEach { (element, langCode) ->
-        element.select("button.alternative-link").map { button ->
-            button.text().replace("(HDrip Xbet)", "").trim() + " $langCode" to button.attr("data-video")
-        }.forEach { (source, videoID) ->
-            val apiGet = app.get(
-                "${mainUrl}/video/$videoID/", interceptor = interceptor,
-                headers = mapOf(
-                    "Content-Type" to "application/json",
-                    "X-Requested-With" to "fetch"
-                ),
-                referer = data
-            ).text
-            Log.d("HDCH_Extractor", "apiGet -> response: $apiGet")
-            var iframe = Regex("""data-src=\\"([^"]+)""").find(apiGet)?.groupValues?.get(1)!!.replace("\\", "")
-            if (iframe.contains("rapidrame")) {
-                iframe = "${mainUrl}/rplayer/" + iframe.substringAfter("?rapidrame_id=")
-            } else if (iframe.contains("mobi")) {
-                val iframeDoc = Jsoup.parse(apiGet)
-                iframe = fixUrlNull(iframeDoc.selectFirst("iframe")?.attr("data-src")) ?: return@forEach
+        document.select("div.alternative-links").map { element ->
+            element to element.attr("data-lang").uppercase()
+        }.forEach { (element, langCode) ->
+            element.select("button.alternative-link").map { button ->
+                button.text().replace("(HDrip Xbet)", "").trim() + " $langCode" to button.attr("data-video")
+            }.forEach { (source, videoID) ->
+                val apiGet = app.get(
+                    "${mainUrl}/video/$videoID/", interceptor = interceptor,
+                    headers = mapOf(
+                        "Content-Type" to "application/json",
+                        "X-Requested-With" to "fetch"
+                    ),
+                    referer = data
+                ).text
+                Log.d("HDCH_Extractor", "apiGet -> response: $apiGet")
+                var iframe = Regex("""data-src=\\"([^"]+)""").find(apiGet)?.groupValues?.get(1)!!.replace("\\", "")
+                if (iframe.contains("rapidrame")) {
+                    iframe = "${mainUrl}/rplayer/" + iframe.substringAfter("?rapidrame_id=")
+                } else if (iframe.contains("mobi")) {
+                    val iframeDoc = Jsoup.parse(apiGet)
+                    iframe = fixUrlNull(iframeDoc.selectFirst("iframe")?.attr("data-src")) ?: return@forEach
+                }
+                Log.d("HDCH_Extractor", "Found iframe: $iframe for source: $source")
+                invokeLocalSource(source, iframe, subtitleCallback, callback)
             }
-            Log.d("HDCH_Extractor", "Found iframe: $iframe for source: $source")
-            invokeLocalSource(source, iframe, subtitleCallback, callback)
         }
+        return true
+    } catch (e: Exception) {
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            ErrorUtils.showPluginError(HDFilmCehennemiPlugin.appContext, this.name, "LOAD_LINKS", data)
+        }, 500)
+        throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
     }
-    return true
 }
     private data class SubSource(
         @JsonProperty("file")    val file: String?  = null,

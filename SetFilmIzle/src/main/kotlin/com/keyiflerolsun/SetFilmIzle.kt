@@ -48,10 +48,15 @@ class SetFilmIzle : MainAPI() {
     )
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        val document = app.get(request.data).document
-        val home     = document.select("div.items article").mapNotNull { it.toMainPageResult() }
+        try {
+            val document = app.get(request.data).document
+            val home     = document.select("div.items article").mapNotNull { it.toMainPageResult() }
 
-        return newHomePageResponse(request.name, home)
+            return newHomePageResponse(request.name, home)
+        } catch (e: Exception) {
+            ErrorUtils.showPluginError(SetFilmIzlePlugin.appContext, this.name, "MAIN_PAGE", mainUrl)
+            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
+        }
     }
 
     private fun Element.toMainPageResult(): SearchResponse? {
@@ -98,37 +103,50 @@ class SetFilmIzle : MainAPI() {
     override suspend fun quickSearch(query: String): List<SearchResponse> = search(query)
 
     override suspend fun load(url: String): LoadResponse? {
-        val document = app.get(url).document
+        try {
+            val document = app.get(url).document
 
-        val title           = document.selectFirst("h1")?.text()?.substringBefore(" izle")?.trim() ?: return null
-        val poster          = fixUrlNull(document.selectFirst("div.poster img")?.attr("src"))
-        val description     = document.selectFirst("div.wp-content p")?.text()?.trim()
-        var year            = document.selectFirst("div.extra span.C a")?.text()?.trim()?.toIntOrNull()
-        val tags            = document.select("div.sgeneros a").map { it.text() }
-        var duration        = document.selectFirst("span.runtime")?.text()?.split(" ")?.first()?.trim()?.toIntOrNull()
-        val recommendations = document.select("div.srelacionados article").mapNotNull { it.toRecommendationResult() }
-        val actors          = document.select("span.valor a").map { Actor(it.text()) }
-        val trailer         = Regex("""embed/(.*)\?rel""").find(document.html())?.groupValues?.get(1)?.let { "https://www.youtube.com/embed/$it" }
+            val title           = document.selectFirst("h1")?.text()?.substringBefore(" izle")?.trim() ?: return null
+            val poster          = fixUrlNull(document.selectFirst("div.poster img")?.attr("src"))
+            val description     = document.selectFirst("div.wp-content p")?.text()?.trim()
+            var year            = document.selectFirst("div.extra span.C a")?.text()?.trim()?.toIntOrNull()
+            val tags            = document.select("div.sgeneros a").map { it.text() }
+            var duration        = document.selectFirst("span.runtime")?.text()?.split(" ")?.first()?.trim()?.toIntOrNull()
+            val recommendations = document.select("div.srelacionados article").mapNotNull { it.toRecommendationResult() }
+            val actors          = document.select("span.valor a").map { Actor(it.text()) }
+            val trailer         = Regex("""embed/(.*)\?rel""").find(document.html())?.groupValues?.get(1)?.let { "https://www.youtube.com/embed/$it" }
 
-        if (url.contains("/dizi/")) {
-            year     = document.selectFirst("a[href*='/yil/']")?.text()?.trim()?.toIntOrNull()
-            duration = document.selectFirst("div#info span:containsOwn(Dakika)")?.text()?.split(" ")?.first()?.trim()?.toIntOrNull()
+            if (url.contains("/dizi/")) {
+                year     = document.selectFirst("a[href*='/yil/']")?.text()?.trim()?.toIntOrNull()
+                duration = document.selectFirst("div#info span:containsOwn(Dakika)")?.text()?.split(" ")?.first()?.trim()?.toIntOrNull()
 
-            val episodes = document.select("div#episodes ul.episodios li").mapNotNull {
-                val epHref    = fixUrlNull(it.selectFirst("h4.episodiotitle a")?.attr("href")) ?: return@mapNotNull null
-                val epName    = it.selectFirst("h4.episodiotitle a")?.ownText()?.trim() ?: return@mapNotNull null
-                val epDetail  = it.selectFirst("h4.episodiotitle a")?.ownText()?.trim() ?: return@mapNotNull null
-                val epSeason  = epDetail.substringBefore(". Sezon").toIntOrNull()
-                val epEpisode = epDetail.split("Sezon ").last().substringBefore(". Bölüm").toIntOrNull()
+                val episodes = document.select("div#episodes ul.episodios li").mapNotNull {
+                    val epHref    = fixUrlNull(it.selectFirst("h4.episodiotitle a")?.attr("href")) ?: return@mapNotNull null
+                    val epName    = it.selectFirst("h4.episodiotitle a")?.ownText()?.trim() ?: return@mapNotNull null
+                    val epDetail  = it.selectFirst("h4.episodiotitle a")?.ownText()?.trim() ?: return@mapNotNull null
+                    val epSeason  = epDetail.substringBefore(". Sezon").toIntOrNull()
+                    val epEpisode = epDetail.split("Sezon ").last().substringBefore(". Bölüm").toIntOrNull()
 
-                newEpisode(epHref) {
-                    this.name    = epName
-                    this.season  = epSeason
-                    this.episode = epEpisode
+                    newEpisode(epHref) {
+                        this.name    = epName
+                        this.season  = epSeason
+                        this.episode = epEpisode
+                    }
+                }
+
+                return newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
+                    this.posterUrl       = poster
+                    this.plot            = description
+                    this.year            = year
+                    this.tags            = tags
+                    this.duration        = duration
+                    this.recommendations = recommendations
+                    addActors(actors)
+                    addTrailer(trailer)
                 }
             }
 
-            return newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
+            return newMovieLoadResponse(title, url, TvType.Movie, url) {
                 this.posterUrl       = poster
                 this.plot            = description
                 this.year            = year
@@ -138,17 +156,9 @@ class SetFilmIzle : MainAPI() {
                 addActors(actors)
                 addTrailer(trailer)
             }
-        }
-
-        return newMovieLoadResponse(title, url, TvType.Movie, url) {
-            this.posterUrl       = poster
-            this.plot            = description
-            this.year            = year
-            this.tags            = tags
-            this.duration        = duration
-            this.recommendations = recommendations
-            addActors(actors)
-            addTrailer(trailer)
+        } catch (e: Exception) {
+            ErrorUtils.showPluginError(SetFilmIzlePlugin.appContext, this.name, "LOAD_DETAILS", url)
+            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 
@@ -197,36 +207,43 @@ override suspend fun loadLinks(
     subtitleCallback: (SubtitleFile) -> Unit,
     callback: (ExtractorLink) -> Unit
 ): Boolean {
-    Log.d("STF", "data » $data")
-    val document = app.get(data).document
+    try {
+        Log.d("STF", "data » $data")
+        val document = app.get(data).document
 
-    document.select("nav.player a").map { element ->
-        val sourceId = element.attr("data-post-id")
-        val name = element.attr("data-player-name")
-        val partKey = element.attr("data-part-key").takeIf { it.isNotEmpty() }
+        document.select("nav.player a").map { element ->
+            val sourceId = element.attr("data-post-id")
+            val name = element.attr("data-player-name")
+            val partKey = element.attr("data-part-key").takeIf { it.isNotEmpty() }
 
-        Triple(name, sourceId, partKey)
-    }.forEach { (name, sourceId, partKey) ->
-        if (sourceId.contains("event")) return@forEach
-        if (sourceId == "") return@forEach
-        var setKey= "SetPlay"
+            Triple(name, sourceId, partKey)
+        }.forEach { (name, sourceId, partKey) ->
+            if (sourceId.contains("event")) return@forEach
+            if (sourceId == "") return@forEach
+            var setKey= "SetPlay"
 
-        val nonce = document.selectFirst("div#playex")?.attr("data-nonce") ?: ""
-        val multiPart = sendMultipartRequest(nonce, sourceId, name, partKey ?: "", data)
-        val sourceBody = multiPart.body.string()
-        val sourceIframe = JSONObject(sourceBody).optJSONObject("data")?.optString("url") ?: return@forEach
+            val nonce = document.selectFirst("div#playex")?.attr("data-nonce") ?: ""
+            val multiPart = sendMultipartRequest(nonce, sourceId, name, partKey ?: "", data)
+            val sourceBody = multiPart.body.string()
+            val sourceIframe = JSONObject(sourceBody).optJSONObject("data")?.optString("url") ?: return@forEach
 
-        Log.d("STF", "iframe » $sourceIframe")
+            Log.d("STF", "iframe » $sourceIframe")
 
-        val finalUrl = if (sourceIframe.contains("setplay")) {
-            sourceIframe // partKey ekleme
-        } else {
-            if (partKey != null) "$sourceIframe?partKey=$partKey" else sourceIframe
+            val finalUrl = if (sourceIframe.contains("setplay")) {
+                sourceIframe // partKey ekleme
+            } else {
+                if (partKey != null) "$sourceIframe?partKey=$partKey" else sourceIframe
+            }
+
+            loadExtractor(finalUrl, "$mainUrl/", subtitleCallback, callback)
         }
 
-        loadExtractor(finalUrl, "$mainUrl/", subtitleCallback, callback)
+        return true
+    } catch (e: Exception) {
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            ErrorUtils.showPluginError(SetFilmIzlePlugin.appContext, this.name, "LOAD_LINKS", data)
+        }, 500)
+        throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
     }
-
-    return true
 }
 }

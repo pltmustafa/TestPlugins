@@ -64,14 +64,19 @@ class HDFilmIzle : MainAPI() {
     )
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        val url = if (page == 1) request.data else "${request.data}page/$page/"
-        val document = app.get(url).document
+        try {
+            val url = if (page == 1) request.data else "${request.data}page/$page/"
+            val document = app.get(url).document
 
-        val home: List<SearchResponse>?
+            val home: List<SearchResponse>?
 
-        home = document.select("div#moviesListResult a.poster").mapNotNull { it.toSearchResult() }
+            home = document.select("div#moviesListResult a.poster").mapNotNull { it.toSearchResult() }
 
-        return newHomePageResponse(request.name, home, hasNext = true)
+            return newHomePageResponse(request.name, home, hasNext = true)
+        } catch (e: Exception) {
+            ErrorUtils.showPluginError(HDFilmIzlePlugin.appContext, this.name, "MAIN_PAGE", mainUrl)
+            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
+        }
     }
 
     private fun Element.toSearchResult(): SearchResponse {
@@ -136,61 +141,74 @@ class HDFilmIzle : MainAPI() {
     }
 
     override suspend fun load(url: String): LoadResponse? {
-        val document = app.get(url).document
+        try {
+            val document = app.get(url).document
 
-        val orgTitle = document.selectFirst("div.page-title h1")?.text() ?: ""
-        val altTitle =
-            document.selectFirst("div.page-title")?.selectFirst("small.text-muted.alt-name")?.text()
-                ?: ""
-        val title =
-            if (altTitle.isNotEmpty() && orgTitle != altTitle) "$orgTitle - $altTitle" else orgTitle
-        val poster = fixUrlNull(document.selectFirst("picture.poster-auto img")?.attr("data-src"))
-        val tags = document.select("div.pb-2.genres a").map { it.text() }
-        val year = document.selectFirst("div.page-title")?.selectFirst("small.text-muted")?.text()
-            ?.replace("(", "")?.replace(")", "")?.toIntOrNull()
-        val description = document.selectFirst("article.text-white > p")?.text()?.trim()
-        val rating = document.selectFirst("div.rate.mb-2 span")?.text()
-        val actors = document.select("div.stories-wrapper a").map {
-            Actor(
-                it.selectFirst("div.story-item-title")!!.text(),
-                fixUrlNull(it.select("img").attr("data-src"))
-            )
-        }
-
-        val recommendations = document.select("div#swiper-wrapper-benzer").mapNotNull {
-            val recName = it.selectFirst("a")?.attr("title") ?: return@mapNotNull null
-            val recHref = fixUrlNull(it.selectFirst("a")?.attr("href")) ?: return@mapNotNull null
-            val recPosterUrl = fixUrlNull(it.selectFirst("img")?.attr("data-src"))
-                ?: fixUrlNull(it.selectFirst("img")?.attr("src"))
-
-            newMovieSearchResponse(recName, recHref, TvType.Movie) {
-                this.posterUrl = recPosterUrl
+            val orgTitle = document.selectFirst("div.page-title h1")?.text() ?: ""
+            val altTitle =
+                document.selectFirst("div.page-title")?.selectFirst("small.text-muted.alt-name")?.text()
+                    ?: ""
+            val title =
+                if (altTitle.isNotEmpty() && orgTitle != altTitle) "$orgTitle - $altTitle" else orgTitle
+            val poster = fixUrlNull(document.selectFirst("picture.poster-auto img")?.attr("data-src"))
+            val tags = document.select("div.pb-2.genres a").map { it.text() }
+            val year = document.selectFirst("div.page-title")?.selectFirst("small.text-muted")?.text()
+                ?.replace("(", "")?.replace(")", "")?.toIntOrNull()
+            val description = document.selectFirst("article.text-white > p")?.text()?.trim()
+            val rating = document.selectFirst("div.rate.mb-2 span")?.text()
+            val actors = document.select("div.stories-wrapper a").map {
+                Actor(
+                    it.selectFirst("div.story-item-title")!!.text(),
+                    fixUrlNull(it.select("img").attr("data-src"))
+                )
             }
-        }
-        val trailer = document.selectFirst("div.nav-link")?.attr("data-trailer")
 
-        val finalUrl = document.location()
-        val isTvSeries = finalUrl.contains("/dizi/") || document.select("div.card-list-item a").isNotEmpty()
-        
-        if (isTvSeries) {
-            val episodes = document.select("div.card-list-item a").mapNotNull { epNode ->
-                val href = fixUrlNull(epNode.attr("href")) ?: return@mapNotNull null
-                val epTitle = epNode.selectFirst("h3")?.text()?.trim() ?: ""
-                
-                val seasonMatch = Regex("(\\d+)\\.\\s*Sezon").find(epTitle)
-                val episodeMatch = Regex("(\\d+)\\.\\s*Bölüm").find(epTitle)
-                
-                val sNum = seasonMatch?.groupValues?.get(1)?.toIntOrNull()
-                val eNum = episodeMatch?.groupValues?.get(1)?.toIntOrNull()
-                
-                newEpisode(href) {
-                    this.name = epTitle
-                    this.season = sNum
-                    this.episode = eNum
+            val recommendations = document.select("div#swiper-wrapper-benzer").mapNotNull {
+                val recName = it.selectFirst("a")?.attr("title") ?: return@mapNotNull null
+                val recHref = fixUrlNull(it.selectFirst("a")?.attr("href")) ?: return@mapNotNull null
+                val recPosterUrl = fixUrlNull(it.selectFirst("img")?.attr("data-src"))
+                    ?: fixUrlNull(it.selectFirst("img")?.attr("src"))
+
+                newMovieSearchResponse(recName, recHref, TvType.Movie) {
+                    this.posterUrl = recPosterUrl
                 }
             }
+            val trailer = document.selectFirst("div.nav-link")?.attr("data-trailer")
+
+            val finalUrl = document.location()
+            val isTvSeries = finalUrl.contains("/dizi/") || document.select("div.card-list-item a").isNotEmpty()
             
-            return newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
+            if (isTvSeries) {
+                val episodes = document.select("div.card-list-item a").mapNotNull { epNode ->
+                    val href = fixUrlNull(epNode.attr("href")) ?: return@mapNotNull null
+                    val epTitle = epNode.selectFirst("h3")?.text()?.trim() ?: ""
+                    
+                    val seasonMatch = Regex("(\\d+)\\.\\s*Sezon").find(epTitle)
+                    val episodeMatch = Regex("(\\d+)\\.\\s*Bölüm").find(epTitle)
+                    
+                    val sNum = seasonMatch?.groupValues?.get(1)?.toIntOrNull()
+                    val eNum = episodeMatch?.groupValues?.get(1)?.toIntOrNull()
+                    
+                    newEpisode(href) {
+                        this.name = epTitle
+                        this.season = sNum
+                        this.episode = eNum
+                    }
+                }
+                
+                return newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
+                    this.posterUrl = poster
+                    this.year = year
+                    this.plot = description
+                    this.tags = tags
+                    this.score = Score.from10(rating)
+                    this.recommendations = recommendations
+                    addActors(actors)
+                    addTrailer(trailer)
+                }
+            }
+
+            return newMovieLoadResponse(title, url, TvType.Movie, url) {
                 this.posterUrl = poster
                 this.year = year
                 this.plot = description
@@ -200,17 +218,9 @@ class HDFilmIzle : MainAPI() {
                 addActors(actors)
                 addTrailer(trailer)
             }
-        }
-
-        return newMovieLoadResponse(title, url, TvType.Movie, url) {
-            this.posterUrl = poster
-            this.year = year
-            this.plot = description
-            this.tags = tags
-            this.score = Score.from10(rating)
-            this.recommendations = recommendations
-            addActors(actors)
-            addTrailer(trailer)
+        } catch (e: Exception) {
+            ErrorUtils.showPluginError(HDFilmIzlePlugin.appContext, this.name, "LOAD_DETAILS", url)
+            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 
@@ -221,14 +231,21 @@ class HDFilmIzle : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        Log.d("HDF", "data » ${data}")
-        val document = app.get(data).document
+        try {
+            Log.d("HDF", "data » ${data}")
+            val document = app.get(data).document
 
-        val iframe = document.selectFirst("iframe")?.attr("data-src") ?: ""
-        Log.d("HDF", "iframe » ${iframe}")
-        loadExtractor(iframe, mainUrl, subtitleCallback, callback)
+            val iframe = document.selectFirst("iframe")?.attr("data-src") ?: ""
+            Log.d("HDF", "iframe » ${iframe}")
+            loadExtractor(iframe, mainUrl, subtitleCallback, callback)
 
-        return true
+            return true
+        } catch (e: Exception) {
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                ErrorUtils.showPluginError(HDFilmIzlePlugin.appContext, this.name, "LOAD_LINKS", data)
+            }, 500)
+            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
+        }
     }
 
     private data class SubSource(

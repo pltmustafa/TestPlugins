@@ -53,10 +53,15 @@ class FullHDFilmizlesene : MainAPI() {
     )
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        val document = app.get("${request.data}${page}").document
-        val home     = document.select("li.film").mapNotNull { it.toSearchResult() }
+        try {
+            val document = app.get("${request.data}${page}").document
+            val home     = document.select("li.film").mapNotNull { it.toSearchResult() }
 
-        return newHomePageResponse(request.name, home)
+            return newHomePageResponse(request.name, home)
+        } catch (e: Exception) {
+            ErrorUtils.showPluginError(FullHDFilmizlesenePlugin.appContext, this.name, "MAIN_PAGE", mainUrl)
+            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
+        }
     }
 
     private fun Element.toSearchResult(): SearchResponse? {
@@ -76,38 +81,43 @@ class FullHDFilmizlesene : MainAPI() {
     override suspend fun quickSearch(query: String): List<SearchResponse> = search(query)
 
     override suspend fun load(url: String): LoadResponse? {
-        val document = app.get(url).document
+        try {
+            val document = app.get(url).document
 
-        val title           = document.selectFirst("div[class=izle-titles]")?.text()?.trim() ?: return null
-        val poster          = fixUrlNull(document.selectFirst("div img")?.attr("data-src"))
-        val year            = document.selectFirst("div.dd a.category")?.text()?.split(" ")?.get(0)?.trim()?.toIntOrNull()
-        val description     = document.selectFirst("div.ozet-ic > p")?.text()?.trim()
-        val tags            = document.select("a[rel='category tag']").map { it.text() }
-        val duration        = document.selectFirst("span.sure")?.text()?.split(" ")?.get(0)?.trim()?.toIntOrNull()
-        val trailer         = Regex("""embedUrl": "(.*)"""").find(document.html())?.groupValues?.get(1)
-        val actors          = document.select("div.film-info ul li:nth-child(2) a > span").map {
-            Actor(it.text())
-        }
-
-
-        val recommendations = document.selectXpath("//div[span[text()='Benzer Filmler']]/following-sibling::section/ul/li").mapNotNull {
-            val recName      = it.selectFirst("span.film-title")?.text() ?: return@mapNotNull null
-            val recHref      = fixUrlNull(it.selectFirst("a")?.attr("href")) ?: return@mapNotNull null
-            val recPosterUrl = fixUrlNull(it.selectFirst("img")?.attr("data-src"))
-            newMovieSearchResponse(recName, recHref, TvType.Movie) {
-                this.posterUrl = recPosterUrl
+            val title           = document.selectFirst("div[class=izle-titles]")?.text()?.trim() ?: return null
+            val poster          = fixUrlNull(document.selectFirst("div img")?.attr("data-src"))
+            val year            = document.selectFirst("div.dd a.category")?.text()?.split(" ")?.get(0)?.trim()?.toIntOrNull()
+            val description     = document.selectFirst("div.ozet-ic > p")?.text()?.trim()
+            val tags            = document.select("a[rel='category tag']").map { it.text() }
+            val duration        = document.selectFirst("span.sure")?.text()?.split(" ")?.get(0)?.trim()?.toIntOrNull()
+            val trailer         = Regex("""embedUrl": "(.*)"""").find(document.html())?.groupValues?.get(1)
+            val actors          = document.select("div.film-info ul li:nth-child(2) a > span").map {
+                Actor(it.text())
             }
-        }
 
-        return newMovieLoadResponse(title, url, TvType.Movie, url) {
-            this.posterUrl       = poster
-            this.year            = year
-            this.plot            = description
-            this.tags            = tags
-            this.duration        = duration
-            this.recommendations = recommendations
-            addActors(actors)
-            addTrailer(trailer)
+
+            val recommendations = document.selectXpath("//div[span[text()='Benzer Filmler']]/following-sibling::section/ul/li").mapNotNull {
+                val recName      = it.selectFirst("span.film-title")?.text() ?: return@mapNotNull null
+                val recHref      = fixUrlNull(it.selectFirst("a")?.attr("href")) ?: return@mapNotNull null
+                val recPosterUrl = fixUrlNull(it.selectFirst("img")?.attr("data-src"))
+                newMovieSearchResponse(recName, recHref, TvType.Movie) {
+                    this.posterUrl = recPosterUrl
+                }
+            }
+
+            return newMovieLoadResponse(title, url, TvType.Movie, url) {
+                this.posterUrl       = poster
+                this.year            = year
+                this.plot            = description
+                this.tags            = tags
+                this.duration        = duration
+                this.recommendations = recommendations
+                addActors(actors)
+                addTrailer(trailer)
+            }
+        } catch (e: Exception) {
+            ErrorUtils.showPluginError(FullHDFilmizlesenePlugin.appContext, this.name, "LOAD_DETAILS", url)
+            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 
@@ -171,25 +181,32 @@ class FullHDFilmizlesene : MainAPI() {
     }
 
     override suspend fun loadLinks(data: String, isCasting: Boolean, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit): Boolean {
-        Log.d("FHD", "data » $data")
-        val document    = app.get(data).document
-        val videoLinks = getVideoLinks(document)
-        Log.d("FHD", "videoLinks » $videoLinks")
-        if (videoLinks.isEmpty()) return false
+        try {
+            Log.d("FHD", "data » $data")
+            val document    = app.get(data).document
+            val videoLinks = getVideoLinks(document)
+            Log.d("FHD", "videoLinks » $videoLinks")
+            if (videoLinks.isEmpty()) return false
 
 
-        for (videoMap in videoLinks) {
-            for ((key, value) in videoMap) {
-                val videoUrl = fixUrlNull(value) ?: continue
-                if (videoUrl.contains("turbo.imgz.me")) {
-                    loadExtractor("${key}||${videoUrl}", "${mainUrl}/", subtitleCallback, callback)
-                } else {
-                    loadExtractor(videoUrl, "${mainUrl}/", subtitleCallback, callback)
+            for (videoMap in videoLinks) {
+                for ((key, value) in videoMap) {
+                    val videoUrl = fixUrlNull(value) ?: continue
+                    if (videoUrl.contains("turbo.imgz.me")) {
+                        loadExtractor("${key}||${videoUrl}", "${mainUrl}/", subtitleCallback, callback)
+                    } else {
+                        loadExtractor(videoUrl, "${mainUrl}/", subtitleCallback, callback)
+                    }
                 }
             }
-        }
 
-        return true
+            return true
+        } catch (e: Exception) {
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                ErrorUtils.showPluginError(FullHDFilmizlesenePlugin.appContext, this.name, "LOAD_LINKS", data)
+            }, 500)
+            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
+        }
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)

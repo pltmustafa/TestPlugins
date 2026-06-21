@@ -91,11 +91,16 @@ class WebteIzle : MainAPI() {
     )
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        val url = if ("SAYFA" in request.data) request.data.replace("SAYFA", "$page") else "${request.data}$page"
-        val document = app.get(url).document
-        val home = document.select("div.golgever").mapNotNull { it.toSearchResult() }
+        try {
+            val url = if ("SAYFA" in request.data) request.data.replace("SAYFA", "$page") else "${request.data}$page"
+            val document = app.get(url).document
+            val home = document.select("div.golgever").mapNotNull { it.toSearchResult() }
 
-        return newHomePageResponse(request.name, home)
+            return newHomePageResponse(request.name, home)
+        } catch (e: Exception) {
+            ErrorUtils.showPluginError(WebteIzlePlugin.appContext, this.name, "MAIN_PAGE", mainUrl)
+            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
+        }
     }
 
     private fun Element.toSearchResult(): SearchResponse? {
@@ -122,27 +127,32 @@ class WebteIzle : MainAPI() {
     override suspend fun quickSearch(query: String): List<SearchResponse> = search(query)
 
     override suspend fun load(url: String): LoadResponse? {
-        val document = app.get(url).document
+        try {
+            val document = app.get(url).document
 
-        val title = document.selectFirst("[property='og:title']")?.attr("content")?.substringBefore(" izle") ?: return null
-        val poster = fixUrlNull(document.selectFirst("div.card img")?.attr("data-src"))
-        val year = document.selectXpath("//td[contains(text(), 'Vizyon')]/following-sibling::td").text().trim().split(" ").last().toIntOrNull()
-        val description = document.selectFirst("blockquote")?.text()?.trim()
-        val tags = document.selectXpath("//a[@itemgroup='genre']").map { it.text() }
-        val duration = document.selectXpath("//td[contains(text(), 'Süre')]/following-sibling::td").text().trim().split(" ").first().toIntOrNull()
-        val trailer = document.selectFirst("button#fragman")?.attr("data-ytid")
-        val actors = document.selectXpath("//div[@data-tab='oyuncular']//a").map {
-            Actor(it.selectFirst("span")!!.text().trim(), fixUrlNull(it.selectFirst("img")!!.attr("data-src")))
-        }
+            val title = document.selectFirst("[property='og:title']")?.attr("content")?.substringBefore(" izle") ?: return null
+            val poster = fixUrlNull(document.selectFirst("div.card img")?.attr("data-src"))
+            val year = document.selectXpath("//td[contains(text(), 'Vizyon')]/following-sibling::td").text().trim().split(" ").last().toIntOrNull()
+            val description = document.selectFirst("blockquote")?.text()?.trim()
+            val tags = document.selectXpath("//a[@itemgroup='genre']").map { it.text() }
+            val duration = document.selectXpath("//td[contains(text(), 'Süre')]/following-sibling::td").text().trim().split(" ").first().toIntOrNull()
+            val trailer = document.selectFirst("button#fragman")?.attr("data-ytid")
+            val actors = document.selectXpath("//div[@data-tab='oyuncular']//a").map {
+                Actor(it.selectFirst("span")!!.text().trim(), fixUrlNull(it.selectFirst("img")!!.attr("data-src")))
+            }
 
-        return newMovieLoadResponse(title, url, TvType.Movie, url) {
-            this.posterUrl = poster
-            this.year = year
-            this.plot = description
-            this.tags = tags
-            this.duration = duration
-            addTrailer("https://www.youtube.com/embed/${trailer}")
-            addActors(actors)
+            return newMovieLoadResponse(title, url, TvType.Movie, url) {
+                this.posterUrl = poster
+                this.year = year
+                this.plot = description
+                this.tags = tags
+                this.duration = duration
+                addTrailer("https://www.youtube.com/embed/${trailer}")
+                addActors(actors)
+            }
+        } catch (e: Exception) {
+            ErrorUtils.showPluginError(WebteIzlePlugin.appContext, this.name, "LOAD_DETAILS", url)
+            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 
@@ -152,84 +162,91 @@ class WebteIzle : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        Log.d("WBTI", "data » $data")
-        val response = app.get(data)
-        val document = response.document
-        val finalUrl = response.url.substringBefore("/hakkinda").substringBefore("/izle")
+        try {
+            Log.d("WBTI", "data » $data")
+            val response = app.get(data)
+            val document = response.document
+            val finalUrl = response.url.substringBefore("/hakkinda").substringBefore("/izle")
 
-        val filmId = document.selectFirst("button#wip")?.attr("data-id") ?: return false
-        Log.d("WBTI", "filmId » $filmId")
+            val filmId = document.selectFirst("button#wip")?.attr("data-id") ?: return false
+            Log.d("WBTI", "filmId » $filmId")
 
-        val dilList = mutableListOf<String>()
-        if (document.selectFirst("div.golge a[href*=dublaj]") != null) {
-            dilList.add("0")
-        }
+            val dilList = mutableListOf<String>()
+            if (document.selectFirst("div.golge a[href*=dublaj]") != null) {
+                dilList.add("0")
+            }
 
-        if (document.selectFirst("div.golge a[href*=altyazi]") != null) {
-            dilList.add("1")
-        }
+            if (document.selectFirst("div.golge a[href*=altyazi]") != null) {
+                dilList.add("1")
+            }
 
-        dilList.forEach {
-            val dilAd = if (it == "0") "Dublaj" else "Altyazı"
+            dilList.forEach {
+                val dilAd = if (it == "0") "Dublaj" else "Altyazı"
 
-            val playerApi = app.post(
-                "${finalUrl}/ajax/dataAlternatif3.asp",
-                headers = mapOf("X-Requested-With" to "XMLHttpRequest"),
-                data = mapOf(
-                    "filmid" to filmId,
-                    "dil" to it,
-                    "s" to "",
-                    "b" to "",
-                    "bot" to "0"
-                )
-            ).text
-            val playerData = AppUtils.tryParseJson<DataAlternatif>(playerApi) ?: return@forEach
-
-            for (thisEmbed in playerData.data) {
-                val embedApi = app.post(
-                    "${finalUrl}/ajax/dataEmbed.asp",
+                val playerApi = app.post(
+                    "${finalUrl}/ajax/dataAlternatif3.asp",
                     headers = mapOf("X-Requested-With" to "XMLHttpRequest"),
-                    data = mapOf("id" to thisEmbed.id.toString())
-                ).document
+                    data = mapOf(
+                        "filmid" to filmId,
+                        "dil" to it,
+                        "s" to "",
+                        "b" to "",
+                        "bot" to "0"
+                    )
+                ).text
+                val playerData = AppUtils.tryParseJson<DataAlternatif>(playerApi) ?: return@forEach
 
-                var iframe = fixUrlNull(embedApi.selectFirst("iframe")?.attr("src"))
+                for (thisEmbed in playerData.data) {
+                    val embedApi = app.post(
+                        "${finalUrl}/ajax/dataEmbed.asp",
+                        headers = mapOf("X-Requested-With" to "XMLHttpRequest"),
+                        data = mapOf("id" to thisEmbed.id.toString())
+                    ).document
 
-if (iframe == null) {
-    val scriptSource = embedApi.html()
+                    var iframe = fixUrlNull(embedApi.selectFirst("iframe")?.attr("src"))
 
-    // Önce vidmoly veya filemoon gibi doğrudan eşleşmeyi dene
-    val matchResult = Regex("""(vidmoly|filemoon)\('([\d\w]+)','""").find(scriptSource)
+    if (iframe == null) {
+        val scriptSource = embedApi.html()
 
-    if (matchResult != null) {
-        val platform = matchResult.groupValues[1]
-        val vidId = matchResult.groupValues[2]
+        // Önce vidmoly veya filemoon gibi doğrudan eşleşmeyi dene
+        val matchResult = Regex("""(vidmoly|filemoon)\('([\d\w]+)','""").find(scriptSource)
 
-        iframe = when (platform) {
-            "vidmoly" -> "https://vidmoly.net/embed-${vidId}.html"
-            "filemoon" -> "https://filemoon.sx/e/${vidId}"
-            else -> null
-        }
-    } else {
-        // Eğer vidmoly yoksa, _0x5c93 tanımı var mı diye kontrol et
-        val hasDzen = Regex("""var\s+_0x5c93\s*=""").containsMatchIn(scriptSource)
-        if (hasDzen) {
-            val dzenMatch = Regex("""var\s+vid\s*=\s*['"]([^'"]+)['"]""").find(scriptSource)
-            val videoId = dzenMatch?.groupValues?.get(1)
-            if (videoId != null) {
-                iframe = "https://dzen.ru/embed/$videoId"
+        if (matchResult != null) {
+            val platform = matchResult.groupValues[1]
+            val vidId = matchResult.groupValues[2]
+
+            iframe = when (platform) {
+                "vidmoly" -> "https://vidmoly.net/embed-${vidId}.html"
+                "filemoon" -> "https://filemoon.sx/e/${vidId}"
+                else -> null
             }
         } else {
-            Log.d("WBTI", "scriptSource » $scriptSource")
-        }
-    }
-}
-
-					if (iframe != null) {
-                    Log.d("WBTI", "iframe » $iframe")
-                    loadExtractor(iframe, "${finalUrl}/", subtitleCallback, callback)
-					}
+            // Eğer vidmoly yoksa, _0x5c93 tanımı var mı diye kontrol et
+            val hasDzen = Regex("""var\s+_0x5c93\s*=""").containsMatchIn(scriptSource)
+            if (hasDzen) {
+                val dzenMatch = Regex("""var\s+vid\s*=\s*['"]([^'"]+)['"]""").find(scriptSource)
+                val videoId = dzenMatch?.groupValues?.get(1)
+                if (videoId != null) {
+                    iframe = "https://dzen.ru/embed/$videoId"
+                }
+            } else {
+                Log.d("WBTI", "scriptSource » $scriptSource")
             }
         }
-        return true
+    }
+
+                        if (iframe != null) {
+                        Log.d("WBTI", "iframe » $iframe")
+                        loadExtractor(iframe, "${finalUrl}/", subtitleCallback, callback)
+                        }
+                }
+            }
+            return true
+        } catch (e: Exception) {
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                ErrorUtils.showPluginError(WebteIzlePlugin.appContext, this.name, "LOAD_LINKS", data)
+            }, 500)
+            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
+        }
     }
 }

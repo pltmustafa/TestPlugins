@@ -28,10 +28,15 @@ class SezonlukDizi : MainAPI() {
     )
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        val document = app.get("${request.data}${page}").document
-        val home     = document.select("div.afis a").mapNotNull { it.toSearchResult() }
+        try {
+            val document = app.get("${request.data}${page}").document
+            val home     = document.select("div.afis a").mapNotNull { it.toSearchResult() }
 
-        return newHomePageResponse(request.name, home)
+            return newHomePageResponse(request.name, home)
+        } catch (e: Exception) {
+            ErrorUtils.showPluginError(SezonlukDiziPlugin.appContext, this.name, "MAIN_PAGE", mainUrl)
+            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
+        }
     }
 
     private fun Element.toSearchResult(): SearchResponse? {
@@ -68,51 +73,56 @@ class SezonlukDizi : MainAPI() {
     override suspend fun quickSearch(query: String): List<SearchResponse> = search(query)
 
     override suspend fun load(url: String): LoadResponse? {
-        val document = app.get(url).document
+        try {
+            val document = app.get(url).document
 
-        val title       = document.selectFirst("div.header")?.text()?.trim() ?: return null
-        val poster      = fixUrlNull(document.selectFirst("div.image img")?.attr("data-src")) ?: return null
-        val year        = document.selectFirst("div.extra span")?.text()?.trim()?.split("-")?.first()?.toIntOrNull()
-        val description = document.selectFirst("span#tartismayorum-konu")?.text()?.trim()
-        val tags        = document.select("div.labels a[href*='tur']").mapNotNull { it.text().trim() }
-        val duration    = document.selectXpath("//span[contains(text(), 'Dk.')]").text().trim().substringBefore(" Dk.").toIntOrNull()
+            val title       = document.selectFirst("div.header")?.text()?.trim() ?: return null
+            val poster      = fixUrlNull(document.selectFirst("div.image img")?.attr("data-src")) ?: return null
+            val year        = document.selectFirst("div.extra span")?.text()?.trim()?.split("-")?.first()?.toIntOrNull()
+            val description = document.selectFirst("span#tartismayorum-konu")?.text()?.trim()
+            val tags        = document.select("div.labels a[href*='tur']").mapNotNull { it.text().trim() }
+            val duration    = document.selectXpath("//span[contains(text(), 'Dk.')]").text().trim().substringBefore(" Dk.").toIntOrNull()
 
-        val endpoint    = url.split("/").last()
+            val endpoint    = url.split("/").last()
 
-        val actorsReq  = app.get("${mainUrl}/oyuncular/${endpoint}").document
-        val actors     = actorsReq.select("div.doubling div.ui").map {
-            Actor(
-                it.selectFirst("div.header")!!.text().trim(),
-                fixUrlNull(it.selectFirst("img")?.attr("src"))
-            )
-        }
-
-
-        val episodesReq = app.get("${mainUrl}/bolumler/${endpoint}").document
-        val episodes    = mutableListOf<Episode>()
-        for (sezon in episodesReq.select("table.unstackable")) {
-            for (bolum in sezon.select("tbody tr")) {
-                val epName    = bolum.selectFirst("td:nth-of-type(4) a")?.text()?.trim() ?: continue
-                val epHref    = fixUrlNull(bolum.selectFirst("td:nth-of-type(4) a")?.attr("href")) ?: continue
-                val epEpisode = bolum.selectFirst("td:nth-of-type(3)")?.text()?.substringBefore(".Bölüm")?.trim()?.toIntOrNull()
-                val epSeason  = bolum.selectFirst("td:nth-of-type(2)")?.text()?.substringBefore(".Sezon")?.trim()?.toIntOrNull()
-
-                episodes.add(newEpisode(epHref) {
-                    this.name    = epName
-                    this.season  = epSeason
-                    this.episode = epEpisode
-                })
+            val actorsReq  = app.get("${mainUrl}/oyuncular/${endpoint}").document
+            val actors     = actorsReq.select("div.doubling div.ui").map {
+                Actor(
+                    it.selectFirst("div.header")!!.text().trim(),
+                    fixUrlNull(it.selectFirst("img")?.attr("src"))
+                )
             }
-        }
 
 
-        return newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
-            this.posterUrl = poster
-            this.year      = year
-            this.plot      = description
-            this.tags      = tags
-            this.duration  = duration
-            addActors(actors)
+            val episodesReq = app.get("${mainUrl}/bolumler/${endpoint}").document
+            val episodes    = mutableListOf<Episode>()
+            for (sezon in episodesReq.select("table.unstackable")) {
+                for (bolum in sezon.select("tbody tr")) {
+                    val epName    = bolum.selectFirst("td:nth-of-type(4) a")?.text()?.trim() ?: continue
+                    val epHref    = fixUrlNull(bolum.selectFirst("td:nth-of-type(4) a")?.attr("href")) ?: continue
+                    val epEpisode = bolum.selectFirst("td:nth-of-type(3)")?.text()?.substringBefore(".Bölüm")?.trim()?.toIntOrNull()
+                    val epSeason  = bolum.selectFirst("td:nth-of-type(2)")?.text()?.substringBefore(".Sezon")?.trim()?.toIntOrNull()
+
+                    episodes.add(newEpisode(epHref) {
+                        this.name    = epName
+                        this.season  = epSeason
+                        this.episode = epEpisode
+                    })
+                }
+            }
+
+
+            return newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
+                this.posterUrl = poster
+                this.year      = year
+                this.plot      = description
+                this.tags      = tags
+                this.duration  = duration
+                addActors(actors)
+            }
+        } catch (e: Exception) {
+            ErrorUtils.showPluginError(SezonlukDiziPlugin.appContext, this.name, "LOAD_DETAILS", url)
+            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 
@@ -122,96 +132,103 @@ class SezonlukDizi : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        Log.d("SZD", "data » $data")
-        val req = app.get(data)
-        val document = req.document
-        val baseUrl = Regex("""(https?://[^/]+)""").find(req.url)?.value ?: mainUrl
+        try {
+            Log.d("SZD", "data » $data")
+            val req = app.get(data)
+            val document = req.document
+            val baseUrl = Regex("""(https?://[^/]+)""").find(req.url)?.value ?: mainUrl
 
-        val aspData = getAspData(baseUrl)
-        val bid = document.selectFirst("div#dilsec")?.attr("data-id") ?: return false
-        Log.d("SZD", "bid » $bid")
+            val aspData = getAspData(baseUrl)
+            val bid = document.selectFirst("div#dilsec")?.attr("data-id") ?: return false
+            Log.d("SZD", "bid » $bid")
 
-        // --- ALTYAZI KISMI ---
-        val altyaziResponse = app.post(
-            "${baseUrl}/ajax/dataAlternatif${aspData.alternatif}.asp",
-            headers = mapOf("X-Requested-With" to "XMLHttpRequest"),
-            data = mapOf(
-                "bid" to bid,
-                "dil" to "1"
-            )
-        ).parsedSafe<Kaynak>()
+            // --- ALTYAZI KISMI ---
+            val altyaziResponse = app.post(
+                "${baseUrl}/ajax/dataAlternatif${aspData.alternatif}.asp",
+                headers = mapOf("X-Requested-With" to "XMLHttpRequest"),
+                data = mapOf(
+                    "bid" to bid,
+                    "dil" to "1"
+                )
+            ).parsedSafe<Kaynak>()
 
-        if (altyaziResponse?.status == "success" && altyaziResponse.data != null) {
-            for (veri in altyaziResponse.data) {
-                Log.d("SZD", "dil»1 | veri.baslik » ${veri.baslik}")
+            if (altyaziResponse?.status == "success" && altyaziResponse.data != null) {
+                for (veri in altyaziResponse.data) {
+                    Log.d("SZD", "dil»1 | veri.baslik » ${veri.baslik}")
 
-                val veriResponse = app.post(
-                    "${baseUrl}/ajax/dataEmbed${aspData.embed}.asp",
-                    headers = mapOf("X-Requested-With" to "XMLHttpRequest"),
-                    data = mapOf("id" to "${veri.id}")
-                ).document
+                    val veriResponse = app.post(
+                        "${baseUrl}/ajax/dataEmbed${aspData.embed}.asp",
+                        headers = mapOf("X-Requested-With" to "XMLHttpRequest"),
+                        data = mapOf("id" to "${veri.id}")
+                    ).document
 
-                val iframeSrc = veriResponse.selectFirst("iframe")?.attr("src")
-                val iframe = fixUrlNull(iframeSrc) ?: continue
-                loadExtractor(iframe, "${baseUrl}/", subtitleCallback) { link ->
-                    callback.invoke(
-                        ExtractorLink(
-                            source = "AltYazı - ${veri.baslik}",
-                            name = "AltYazı - ${veri.baslik}",
-                            url = link.url,
-                            referer = link.referer,
-                            quality = link.quality,
-                            type = link.type,
-                            headers = link.headers,
-                            extractorData = link.extractorData
+                    val iframeSrc = veriResponse.selectFirst("iframe")?.attr("src")
+                    val iframe = fixUrlNull(iframeSrc) ?: continue
+                    loadExtractor(iframe, "${baseUrl}/", subtitleCallback) { link ->
+                        callback.invoke(
+                            ExtractorLink(
+                                source = "AltYazı - ${veri.baslik}",
+                                name = "AltYazı - ${veri.baslik}",
+                                url = link.url,
+                                referer = link.referer,
+                                quality = link.quality,
+                                type = link.type,
+                                headers = link.headers,
+                                extractorData = link.extractorData
+                            )
                         )
-                    )
+                    }
                 }
             }
-        }
 
-        // --- DUBLAJ KISMI ---
-        val dublajResponse = app.post(
-            "${baseUrl}/ajax/dataAlternatif${aspData.alternatif}.asp",
-            headers = mapOf("X-Requested-With" to "XMLHttpRequest"),
-            data = mapOf(
-                "bid" to bid,
-                "dil" to "0"
-            )
-        ).parsedSafe<Kaynak>()
+            // --- DUBLAJ KISMI ---
+            val dublajResponse = app.post(
+                "${baseUrl}/ajax/dataAlternatif${aspData.alternatif}.asp",
+                headers = mapOf("X-Requested-With" to "XMLHttpRequest"),
+                data = mapOf(
+                    "bid" to bid,
+                    "dil" to "0"
+                )
+            ).parsedSafe<Kaynak>()
 
-        if (dublajResponse?.status == "success" && dublajResponse.data != null) {
-            for (veri in dublajResponse.data) {
-                Log.d("SZD", "dil»0 | veri.baslik » ${veri.baslik}")
+            if (dublajResponse?.status == "success" && dublajResponse.data != null) {
+                for (veri in dublajResponse.data) {
+                    Log.d("SZD", "dil»0 | veri.baslik » ${veri.baslik}")
 
-                val veriResponse = app.post(
-                    "${baseUrl}/ajax/dataEmbed${aspData.embed}.asp",
-                    headers = mapOf("X-Requested-With" to "XMLHttpRequest"),
-                    data = mapOf("id" to "${veri.id}")
-                ).document
+                    val veriResponse = app.post(
+                        "${baseUrl}/ajax/dataEmbed${aspData.embed}.asp",
+                        headers = mapOf("X-Requested-With" to "XMLHttpRequest"),
+                        data = mapOf("id" to "${veri.id}")
+                    ).document
 
-                val iframeSrc = veriResponse.selectFirst("iframe")?.attr("src")
-                val iframe = fixUrlNull(iframeSrc) ?: continue
-                Log.d("SZD", "dil»0 | iframe » $iframe")
+                    val iframeSrc = veriResponse.selectFirst("iframe")?.attr("src")
+                    val iframe = fixUrlNull(iframeSrc) ?: continue
+                    Log.d("SZD", "dil»0 | iframe » $iframe")
 
-                loadExtractor(iframe, "${baseUrl}/", subtitleCallback) { link ->
-                    callback.invoke(
-                        ExtractorLink(
-                            source = "Dublaj - ${veri.baslik}",
-                            name = "Dublaj - ${veri.baslik}",
-                            url = link.url,
-                            referer = link.referer,
-                            quality = link.quality,
-                            type = link.type,
-                            headers = link.headers,
-                            extractorData = link.extractorData
+                    loadExtractor(iframe, "${baseUrl}/", subtitleCallback) { link ->
+                        callback.invoke(
+                            ExtractorLink(
+                                source = "Dublaj - ${veri.baslik}",
+                                name = "Dublaj - ${veri.baslik}",
+                                url = link.url,
+                                referer = link.referer,
+                                quality = link.quality,
+                                type = link.type,
+                                headers = link.headers,
+                                extractorData = link.extractorData
+                            )
                         )
-                    )
+                    }
                 }
             }
-        }
 
-        return true
+            return true
+        } catch (e: Exception) {
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                ErrorUtils.showPluginError(SezonlukDiziPlugin.appContext, this.name, "LOAD_LINKS", data)
+            }, 500)
+            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
+        }
     }
 
     //Helper function for getting the number (probably some kind of version?) after the dataAlternatif and dataEmbed

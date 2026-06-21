@@ -6,7 +6,12 @@ import android.content.Context
 
 @CloudstreamPlugin
 class DiziBoxPlugin: Plugin() {
+    companion object {
+        var appContext: Context? = null
+    }
+
     override fun load(context: Context) {
+        appContext = context
         registerMainAPI(DiziBox())
     }
 }

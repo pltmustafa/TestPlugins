@@ -90,10 +90,15 @@ class YabanciDizi : MainAPI() {
     )
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        val document = app.get("${request.data}/${page}").document
-        val home = document.select("div.mofy-movbox").mapNotNull { it.toSearchResult() }
+        try {
+            val document = app.get("${request.data}/${page}").document
+            val home = document.select("div.mofy-movbox").mapNotNull { it.toSearchResult() }
 
-        return newHomePageResponse(request.name, home)
+            return newHomePageResponse(request.name, home)
+        } catch (e: Exception) {
+            ErrorUtils.showPluginError(YabanciDiziPlugin.appContext, this.name, "MAIN_PAGE", mainUrl)
+            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
+        }
     }
 
     private fun Element.toSearchResult(): SearchResponse? {
@@ -147,73 +152,78 @@ class YabanciDizi : MainAPI() {
     override suspend fun quickSearch(query: String): List<SearchResponse> = search(query)
 
     override suspend fun load(url: String): LoadResponse {
-        val headers = mapOf(
-            "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-            "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
-        )
-        val document = app.get(url, referer = mainUrl, headers = headers).document
+        try {
+            val headers = mapOf(
+                "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+                "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+            )
+            val document = app.get(url, referer = mainUrl, headers = headers).document
 
-        val title = document.selectFirst("h1.page-title")?.text()?.trim() ?: "Title"
-        val poster = fixUrlNull(document.selectFirst("div#series-profile-wrapper img")?.attr("src"))
-            ?: ""
-        val year =
-            document.selectFirst("h1 span")?.text()?.substringAfter("(")?.substringBefore(")")
-                ?.toIntOrNull()
-        val description = document.selectFirst("div.series-summary-wrapper p")?.text()?.trim()
-        val tags = mutableListOf<String>()
-        document.selectFirst("div.ui.list")?.select("a")?.forEach {
-            if (!it.attr("href").contains("/oyuncu/")) {
-                tags.add(it.text().trim())
-            }
-        }
-        val rating = document.selectFirst("div.color-imdb")?.text()?.trim()
-        val duration =
-            document.selectXpath("//div[text()='Süre']//following-sibling::div").text().trim()
-                .split(" ").first().toIntOrNull()
-        val trailer = document.selectFirst("div.media-trailer")?.attr("data-yt")
-        val actors = document.selectFirst("div.global-box")?.select("div.item")?.map {
-            Actor(it.selectFirst("h5")!!.text(), fixUrlNull(it.selectFirst("img")!!.attr("src")))
-        }
-        if (url.contains("/dizi/")) {
-            val episodes = mutableListOf<Episode>()
-            document.select("div.tabular-content").forEach {
-                val epSeason = it.parent()?.attr("data-season")?.toIntOrNull()
-                var epEpisode = 0
-                it.select("div.item").forEach ep@{ episodeElement ->
-                    val epHref =
-                        fixUrlNull(episodeElement.selectFirst("h6 a")?.attr("href")) ?: return@ep
-                    epEpisode++
-                    episodes.add(
-                        newEpisode(epHref){
-                            this.name = "${epSeason}. Sezon ${epEpisode}. Bölüm"
-                            this.season = epSeason
-                            this.episode = epEpisode
-                        }
-                    )
+            val title = document.selectFirst("h1.page-title")?.text()?.trim() ?: "Title"
+            val poster = fixUrlNull(document.selectFirst("div#series-profile-wrapper img")?.attr("src"))
+                ?: ""
+            val year =
+                document.selectFirst("h1 span")?.text()?.substringAfter("(")?.substringBefore(")")
+                    ?.toIntOrNull()
+            val description = document.selectFirst("div.series-summary-wrapper p")?.text()?.trim()
+            val tags = mutableListOf<String>()
+            document.selectFirst("div.ui.list")?.select("a")?.forEach {
+                if (!it.attr("href").contains("/oyuncu/")) {
+                    tags.add(it.text().trim())
                 }
             }
+            val rating = document.selectFirst("div.color-imdb")?.text()?.trim()
+            val duration =
+                document.selectXpath("//div[text()='Süre']//following-sibling::div").text().trim()
+                    .split(" ").first().toIntOrNull()
+            val trailer = document.selectFirst("div.media-trailer")?.attr("data-yt")
+            val actors = document.selectFirst("div.global-box")?.select("div.item")?.map {
+                Actor(it.selectFirst("h5")!!.text(), fixUrlNull(it.selectFirst("img")!!.attr("src")))
+            }
+            if (url.contains("/dizi/")) {
+                val episodes = mutableListOf<Episode>()
+                document.select("div.tabular-content").forEach {
+                    val epSeason = it.parent()?.attr("data-season")?.toIntOrNull()
+                    var epEpisode = 0
+                    it.select("div.item").forEach ep@{ episodeElement ->
+                        val epHref =
+                            fixUrlNull(episodeElement.selectFirst("h6 a")?.attr("href")) ?: return@ep
+                        epEpisode++
+                        episodes.add(
+                            newEpisode(epHref){
+                                this.name = "${epSeason}. Sezon ${epEpisode}. Bölüm"
+                                this.season = epSeason
+                                this.episode = epEpisode
+                            }
+                        )
+                    }
+                }
 
-            return newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
-                this.posterUrl = poster
-                this.year = year
-                this.plot = description
-                this.tags = tags
-                this.score = Score.from10(rating)
-                this.duration = duration
-                addActors(actors)
-                addTrailer("https://www.youtube.com/embed/${trailer}")
+                return newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
+                    this.posterUrl = poster
+                    this.year = year
+                    this.plot = description
+                    this.tags = tags
+                    this.score = Score.from10(rating)
+                    this.duration = duration
+                    addActors(actors)
+                    addTrailer("https://www.youtube.com/embed/${trailer}")
+                }
+            } else {
+                return newMovieLoadResponse(title, url, TvType.Movie, url) {
+                    this.posterUrl = poster
+                    this.year = year
+                    this.plot = description
+                    this.tags = tags
+                    this.score = Score.from10(rating)
+                    this.duration = duration
+                    addActors(actors)
+                    addTrailer("https://www.youtube.com/embed/${trailer}")
+                }
             }
-        } else {
-            return newMovieLoadResponse(title, url, TvType.Movie, url) {
-                this.posterUrl = poster
-                this.year = year
-                this.plot = description
-                this.tags = tags
-                this.score = Score.from10(rating)
-                this.duration = duration
-                addActors(actors)
-                addTrailer("https://www.youtube.com/embed/${trailer}")
-            }
+        } catch (e: Exception) {
+            ErrorUtils.showPluginError(YabanciDiziPlugin.appContext, this.name, "LOAD_DETAILS", url)
+            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 
@@ -223,110 +233,117 @@ class YabanciDizi : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        Log.d("YBD", "data » ${data}")
-        val document = app.get(data).document
-        val timestampMillis = (System.currentTimeMillis() - 50000)
-        var dilAd = ""
-        document.select("div#series-tabs a").forEachIndexed { index, it ->
-            val dataEid = it.attr("data-eid")
-            if (dataEid.isNullOrEmpty()) return@forEachIndexed
-            Log.d("YBD", "dataEid -> $dataEid")
-            val dataType = it.attr("data-type")
-            val dilAd = if (dataType == "2") "Dublaj" else "Altyazı"
-            try {
-                val encodedEid = java.net.URLEncoder.encode(dataEid, "UTF-8")
-                val doc = app.post("$mainUrl/ajax/service", referer = data, headers =
-                mapOf("user-agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:135.0) Gecko/20100101 Firefox/135.0",
-                    "Accept" to "application/json, text/javascript, */*; q=0.01", "Cookie" to "udys=$timestampMillis",
-                    "X-Requested-With" to "XMLHttpRequest"),
-                    data = mapOf("lang" to dataType, "episode" to encodedEid, "type" to "langTab"), interceptor = interceptor).parsedSafe<Series>()
-                Log.d("YBD", "dataEidDoc -> $doc")
-                val doca = Jsoup.parse(doc!!.data)
-                doca.select("div.item").forEach {
-                    val name = it.text()
-                    Log.d("YBD", "Host Name: $name")
-                    val dataLink = it.attr("data-link")
-                    Log.d("YBD", "dataLink: $dataLink")
-                    val dataHash = it.attr("data-hash")
-                    Log.d("YBD", "dataHash: $dataHash")
-                    
-                    try {
-                        if (name.contains("Mac")) {
-                            val mac = app.get(
-                                "${mainUrl}/api/drive/" +
-                                        dataLink.replace("/", "_").replace("+", "-"),
-                                referer = "$mainUrl/",
-                                headers =
-                                mapOf("user-agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:135.0) Gecko/20100101 Firefox/135.0", "Cookie" to "udys=$timestampMillis")
-                            ).document
-                            var subFrame = mac.selectFirst("iframe")?.attr("src") ?: ""
-                            Log.d("YBD", "Mac subFrame (1) -> $subFrame")
-                            if (subFrame.isEmpty()) {
-                                Log.d("YBD", "subFrame boş, drives denenecek")
-                                val timestampInSeconds = System.currentTimeMillis() / 1000
-                                val drives = app.get(
-                                    "${mainUrl}/api/drives/" +
-                                            dataLink.replace("/", "_").replace("+", "-") + "?t=$timestampInSeconds",
-                                    referer = "${mainUrl}/api/drives/" +
+        try {
+            Log.d("YBD", "data » ${data}")
+            val document = app.get(data).document
+            val timestampMillis = (System.currentTimeMillis() - 50000)
+            var dilAd = ""
+            document.select("div#series-tabs a").forEachIndexed { index, it ->
+                val dataEid = it.attr("data-eid")
+                if (dataEid.isNullOrEmpty()) return@forEachIndexed
+                Log.d("YBD", "dataEid -> $dataEid")
+                val dataType = it.attr("data-type")
+                val dilAd = if (dataType == "2") "Dublaj" else "Altyazı"
+                try {
+                    val encodedEid = java.net.URLEncoder.encode(dataEid, "UTF-8")
+                    val doc = app.post("$mainUrl/ajax/service", referer = data, headers =
+                    mapOf("user-agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:135.0) Gecko/20100101 Firefox/135.0",
+                        "Accept" to "application/json, text/javascript, */*; q=0.01", "Cookie" to "udys=$timestampMillis",
+                        "X-Requested-With" to "XMLHttpRequest"),
+                        data = mapOf("lang" to dataType, "episode" to encodedEid, "type" to "langTab"), interceptor = interceptor).parsedSafe<Series>()
+                    Log.d("YBD", "dataEidDoc -> $doc")
+                    val doca = Jsoup.parse(doc!!.data)
+                    doca.select("div.item").forEach {
+                        val name = it.text()
+                        Log.d("YBD", "Host Name: $name")
+                        val dataLink = it.attr("data-link")
+                        Log.d("YBD", "dataLink: $dataLink")
+                        val dataHash = it.attr("data-hash")
+                        Log.d("YBD", "dataHash: $dataHash")
+                        
+                        try {
+                            if (name.contains("Mac")) {
+                                val mac = app.get(
+                                    "${mainUrl}/api/drive/" +
                                             dataLink.replace("/", "_").replace("+", "-"),
+                                    referer = "$mainUrl/",
                                     headers =
                                     mapOf("user-agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:135.0) Gecko/20100101 Firefox/135.0", "Cookie" to "udys=$timestampMillis")
                                 ).document
-                                subFrame = drives.selectFirst("iframe")?.attr("src") ?: ""
-                                Log.d("YBD", "Mac subFrame (drives) -> $subFrame")
+                                var subFrame = mac.selectFirst("iframe")?.attr("src") ?: ""
+                                Log.d("YBD", "Mac subFrame (1) -> $subFrame")
                                 if (subFrame.isEmpty()) {
-                                    Log.d("YBD", "drives sonrası da boş!")
-                                    return@forEach
+                                    Log.d("YBD", "subFrame boş, drives denenecek")
+                                    val timestampInSeconds = System.currentTimeMillis() / 1000
+                                    val drives = app.get(
+                                        "${mainUrl}/api/drives/" +
+                                                dataLink.replace("/", "_").replace("+", "-") + "?t=$timestampInSeconds",
+                                        referer = "${mainUrl}/api/drives/" +
+                                                dataLink.replace("/", "_").replace("+", "-"),
+                                        headers =
+                                        mapOf("user-agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:135.0) Gecko/20100101 Firefox/135.0", "Cookie" to "udys=$timestampMillis")
+                                    ).document
+                                    subFrame = drives.selectFirst("iframe")?.attr("src") ?: ""
+                                    Log.d("YBD", "Mac subFrame (drives) -> $subFrame")
+                                    if (subFrame.isEmpty()) {
+                                        Log.d("YBD", "drives sonrası da boş!")
+                                        return@forEach
+                                    }
+                                    loadMac(subFrame, callback, dilAd)
+                                } else {
+                                    Log.d("YBD", "Mac subFrame dolu, devam")
+                                    loadMac(subFrame, callback, dilAd)
                                 }
-                                loadMac(subFrame, callback, dilAd)
-                            } else {
-                                Log.d("YBD", "Mac subFrame dolu, devam")
-                                loadMac(subFrame, callback, dilAd)
-                            }
 
-                        } else if (name.contains("VidMoly")) {
-                            val vdm = app.get(
-                                "${mainUrl}/api/moly/" +
-                                        dataLink.replace("/", "_").replace("+", "-"), referer = "$mainUrl/",
-                                headers =
-                                mapOf("user-agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:135.0) Gecko/20100101 Firefox/135.0", "Cookie" to "udys=$timestampMillis")
-                            ).document
-                            val subFrame = vdm.selectFirst("iframe")?.attr("src") ?: ""
-                            Log.d("YBD", "Vidmoly subFrame -> $subFrame")
-                            if (subFrame.isNotEmpty()) {
-                                loadExtractor(subFrame, "${mainUrl}/", subtitleCallback) { link ->
-                                    callback.invoke(link)
+                            } else if (name.contains("VidMoly")) {
+                                val vdm = app.get(
+                                    "${mainUrl}/api/moly/" +
+                                            dataLink.replace("/", "_").replace("+", "-"), referer = "$mainUrl/",
+                                    headers =
+                                    mapOf("user-agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:135.0) Gecko/20100101 Firefox/135.0", "Cookie" to "udys=$timestampMillis")
+                                ).document
+                                val subFrame = vdm.selectFirst("iframe")?.attr("src") ?: ""
+                                Log.d("YBD", "Vidmoly subFrame -> $subFrame")
+                                if (subFrame.isNotEmpty()) {
+                                    loadExtractor(subFrame, "${mainUrl}/", subtitleCallback) { link ->
+                                        callback.invoke(link)
+                                    }
+                                } else {
+                                    Log.d("YBD", "VidMoly iframe bulunamadı!")
                                 }
-                            } else {
-                                Log.d("YBD", "VidMoly iframe bulunamadı!")
-                            }
-                        } else if (name.contains("Okru")) {
-                            val okr = app.get(
-                                "${mainUrl}/api/ruplay/" +
-                                        dataLink.replace("/", "_").replace("+", "-"), referer = "$mainUrl/",
-                                headers =
-                                mapOf("user-agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:135.0) Gecko/20100101 Firefox/135.0", "Cookie" to "udys=$timestampMillis")
-                            ).document
-                            val subFrame = okr.selectFirst("iframe")?.attr("src") ?: ""
-                            Log.d("YBD", "Okru subFrame -> $subFrame")
-                            if (subFrame.isNotEmpty()) {
-                                loadExtractor(subFrame, "${mainUrl}/", subtitleCallback) { link ->
-                                    callback.invoke(link)
+                            } else if (name.contains("Okru")) {
+                                val okr = app.get(
+                                    "${mainUrl}/api/ruplay/" +
+                                            dataLink.replace("/", "_").replace("+", "-"), referer = "$mainUrl/",
+                                    headers =
+                                    mapOf("user-agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:135.0) Gecko/20100101 Firefox/135.0", "Cookie" to "udys=$timestampMillis")
+                                ).document
+                                val subFrame = okr.selectFirst("iframe")?.attr("src") ?: ""
+                                Log.d("YBD", "Okru subFrame -> $subFrame")
+                                if (subFrame.isNotEmpty()) {
+                                    loadExtractor(subFrame, "${mainUrl}/", subtitleCallback) { link ->
+                                        callback.invoke(link)
+                                    }
+                                } else {
+                                    Log.d("YBD", "Okru iframe bulunamadı!")
                                 }
-                            } else {
-                                Log.d("YBD", "Okru iframe bulunamadı!")
                             }
+                        } catch (e: Exception) {
+                            Log.e("YBD", "Host: $name işlenirken hata: ${e.message}", e)
                         }
-                    } catch (e: Exception) {
-                        Log.e("YBD", "Host: $name işlenirken hata: ${e.message}", e)
                     }
+                } catch (e: Exception) {
+                    Log.e("YBD", "Tab: $dataEid işlenirken hata: ${e.message}", e)
                 }
-            } catch (e: Exception) {
-                Log.e("YBD", "Tab: $dataEid işlenirken hata: ${e.message}", e)
             }
-        }
 
-        return true
+            return true
+        } catch (e: Exception) {
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                ErrorUtils.showPluginError(YabanciDiziPlugin.appContext, this.name, "LOAD_LINKS", data)
+            }, 500)
+            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
+        }
     }
 
     private suspend fun loadMac(subFrame: String, callback: (ExtractorLink) -> Unit, dilAd: String) {

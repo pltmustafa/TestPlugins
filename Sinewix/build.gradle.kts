@@ -1,7 +1,7 @@
 version = 2
 
 cloudstream {
-    authors     = listOf("patr0n", "keyiflerolsun")
+    authors     = listOf("patr0n", "keyiflerolsun", "pltmustafa")
     language    = "tr"
     description = "Sinewix | Ücretsiz Film - Dizi - Anime İzleme Uygulaması"
 
