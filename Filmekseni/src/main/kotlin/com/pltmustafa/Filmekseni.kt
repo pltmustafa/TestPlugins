@@ -42,14 +42,19 @@ class Filmekseni : MainAPI() {
     )
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        val url = if (page == 1) request.data else "${request.data}?page=$page"
-        val document = app.get(url).document
-        
-        val home = document.select("a[class*='group/poster']").mapNotNull {
-            it.toSearchResult()
+        try {
+            val url = if (page == 1) request.data else "${request.data}?page=$page"
+            val document = app.get(url).document
+            
+            val home = document.select("a[class*='group/poster']").mapNotNull {
+                it.toSearchResult()
+            }
+            
+            return newHomePageResponse(request.name, home)
+        } catch (e: Exception) {
+            ErrorUtils.showPluginError(FilmekseniPlugin.appContext, this.name, "MAIN_PAGE", mainUrl)
+            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
-        
-        return newHomePageResponse(request.name, home)
     }
 
     private fun Element.toSearchResult(): SearchResponse? {
@@ -91,167 +96,179 @@ class Filmekseni : MainAPI() {
     }
 
     override suspend fun load(url: String): LoadResponse? {
-        val document = app.get(url).document
-        val title = document.selectFirst("h1")?.text()?.trim() ?: return null
-        val poster = fixUrlNull(document.selectFirst("div.aspect-\\[2\\/3\\] img")?.attr("src") ?: document.selectFirst("img[alt='$title']")?.attr("src"))
-        
-        val description = document.selectFirst("div.text-gray-300.leading-relaxed")?.text()?.trim()
-        val infoBox = document.selectFirst("h3:contains(Bilgileri)")?.parent()
-        
-        val tags = infoBox?.select("a[href*='/tur/']")?.map { it.text().trim() } ?: emptyList()
-        val year = infoBox?.selectFirst("a[href*='/yil/']")?.text()?.toIntOrNull()
-        val ratingText = infoBox?.selectFirst("a[href*='imdb.com']")?.text()
-        val ratingString = ratingText?.let { Regex("""(\d+\.\d+|\d+)""").find(it)?.groupValues?.get(1) }
-        
-        val actorsElements = document.select("div.horizontal-scroller-track a.group, div.horizontal-scroller-track div.group")
-        val actorsList = actorsElements.mapNotNull { actorEl ->
-            val name = actorEl.selectFirst("h4")?.text()?.trim() ?: return@mapNotNull null
-            val image = fixUrlNull(actorEl.selectFirst("img")?.attr("src"))
-            Actor(name, image)
-        }
-        
-        
-        Log.d("Filmekseni", "Extracted Year: $year")
-        Log.d("Filmekseni", "Extracted RatingText: $ratingText -> $ratingString")
-        
-        val isSeries = url.contains("/dizi/")
-        val duration = document.select("div.flex.items-center.gap-4 span").firstOrNull { it.text().contains("dk") }?.text()?.filter { it.isDigit() }?.toIntOrNull()
-        
-        Log.d("Filmekseni", "load() called with url: $url, isSeries: $isSeries")
-        Log.d("Filmekseni", "Title: $title")
-        
-        if (isSeries) {
-            val epElements = document.select("a[href*='/sezon-']")
-            Log.d("Filmekseni", "Found ${epElements.size} episode links")
+        try {
+            val document = app.get(url).document
+            val title = document.selectFirst("h1")?.text()?.trim() ?: throw Exception("Başlık bulunamadı")
+            val poster = fixUrlNull(document.selectFirst("div.aspect-\\[2\\/3\\] img")?.attr("src") ?: document.selectFirst("img[alt='$title']")?.attr("src"))
             
-            val episodes = epElements.mapNotNull {
-                val epHref = fixUrlNull(it.attr("href")) ?: return@mapNotNull null
-                val epText = it.text().trim()
-                
-                val seasonRegex = Regex("""/sezon-(\d+)""")
-                val episodeRegex = Regex("""/bolum-(\d+)""")
-                
-                val sMatch = seasonRegex.find(epHref)
-                val eMatch = episodeRegex.find(epHref)
-                
-                val sNum = sMatch?.groupValues?.get(1)?.toIntOrNull() ?: 1
-                val eNum = eMatch?.groupValues?.get(1)?.toIntOrNull()
-                
-                newEpisode(epHref) {
-                    this.name = epText
-                    this.season = sNum
-                    this.episode = eNum
-                }
-            }
-            Log.d("Filmekseni", "Total parsed episodes: ${episodes.size}")
+            val description = document.selectFirst("div.text-gray-300.leading-relaxed")?.text()?.trim()
+            val infoBox = document.selectFirst("h3:contains(Bilgileri)")?.parent()
             
-            return newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
-                this.posterUrl = poster
-                this.plot = description
-                this.tags = tags
-                this.year = year
-                if (ratingString != null) {
-                    try {
-                        this.score = Score.from10(ratingString)
-                    } catch (e: Exception) {}
-                }
-                addActors(actorsList)
+            val tags = infoBox?.select("a[href*='/tur/']")?.map { it.text().trim() } ?: emptyList()
+            val year = infoBox?.selectFirst("a[href*='/yil/']")?.text()?.toIntOrNull()
+            val ratingText = infoBox?.selectFirst("a[href*='imdb.com']")?.text()
+            val ratingString = ratingText?.let { Regex("""(\d+\.\d+|\d+)""").find(it)?.groupValues?.get(1) }
+            
+            val actorsElements = document.select("div.horizontal-scroller-track a.group, div.horizontal-scroller-track div.group")
+            val actorsList = actorsElements.mapNotNull { actorEl ->
+                val name = actorEl.selectFirst("h4")?.text()?.trim() ?: return@mapNotNull null
+                val image = fixUrlNull(actorEl.selectFirst("img")?.attr("src"))
+                Actor(name, image)
             }
-        } else {
-            return newMovieLoadResponse(title, url, TvType.Movie, url) {
-                this.posterUrl = poster
-                this.plot = description
-                this.tags = tags
-                this.year = year
-                this.duration = duration
-                if (ratingString != null) {
-                    try {
-                        this.score = Score.from10(ratingString)
-                    } catch (e: Exception) {}
+            
+            
+            Log.d("Filmekseni", "Extracted Year: $year")
+            Log.d("Filmekseni", "Extracted RatingText: $ratingText -> $ratingString")
+            
+            val isSeries = url.contains("/dizi/")
+            val duration = document.select("div.flex.items-center.gap-4 span").firstOrNull { it.text().contains("dk") }?.text()?.filter { it.isDigit() }?.toIntOrNull()
+            
+            Log.d("Filmekseni", "load() called with url: $url, isSeries: $isSeries")
+            Log.d("Filmekseni", "Title: $title")
+            
+            if (isSeries) {
+                val epElements = document.select("a[href*='/sezon-']")
+                Log.d("Filmekseni", "Found ${epElements.size} episode links")
+                
+                val episodes = epElements.mapNotNull {
+                    val epHref = fixUrlNull(it.attr("href")) ?: return@mapNotNull null
+                    val epText = it.text().trim()
+                    
+                    val seasonRegex = Regex("""/sezon-(\d+)""")
+                    val episodeRegex = Regex("""/bolum-(\d+)""")
+                    
+                    val sMatch = seasonRegex.find(epHref)
+                    val eMatch = episodeRegex.find(epHref)
+                    
+                    val sNum = sMatch?.groupValues?.get(1)?.toIntOrNull() ?: 1
+                    val eNum = eMatch?.groupValues?.get(1)?.toIntOrNull()
+                    
+                    newEpisode(epHref) {
+                        this.name = epText
+                        this.season = sNum
+                        this.episode = eNum
+                    }
                 }
-                addActors(actorsList)
+                Log.d("Filmekseni", "Total parsed episodes: ${episodes.size}")
+                
+                return newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
+                    this.posterUrl = poster
+                    this.plot = description
+                    this.tags = tags
+                    this.year = year
+                    if (ratingString != null) {
+                        try {
+                            this.score = Score.from10(ratingString)
+                        } catch (e: Exception) {}
+                    }
+                    addActors(actorsList)
+                }
+            } else {
+                return newMovieLoadResponse(title, url, TvType.Movie, url) {
+                    this.posterUrl = poster
+                    this.plot = description
+                    this.tags = tags
+                    this.year = year
+                    this.duration = duration
+                    if (ratingString != null) {
+                        try {
+                            this.score = Score.from10(ratingString)
+                        } catch (e: Exception) {}
+                    }
+                    addActors(actorsList)
+                }
             }
+        } catch (e: Exception) {
+            ErrorUtils.showPluginError(FilmekseniPlugin.appContext, this.name, "LOAD_DETAILS", url)
+            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 
     override suspend fun loadLinks(data: String, isCasting: Boolean, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit): Boolean {
-        Log.d("Filmekseni", "loadLinks() called with data: $data")
-        val html = app.get(data).document.outerHtml()
-        
-        val jsonStrMatch = Regex("""JSON\.parse\('([^']*)'\)""").find(html)
-        if (jsonStrMatch != null) {
-            Log.d("Filmekseni", "Found JSON.parse block")
-            val rawJson = jsonStrMatch.groupValues[1].replace("\\u0022", "\"").replace("\\\\", "\\")
-            Log.d("Filmekseni", "Raw JSON parsed length: ${rawJson.length}")
+        try {
+            Log.d("Filmekseni", "loadLinks() called with data: $data")
+            val html = app.get(data).document.outerHtml()
             
-            val objects = rawJson.split("},{") 
-            Log.d("Filmekseni", "Found ${objects.size} source objects")
-            for (obj in objects) {
-                val link = Regex(""""link":"([^"]*)"""").find(obj)?.groupValues?.get(1)
-                val template = Regex(""""template":"([^"]*)"""").find(obj)?.groupValues?.get(1)
+            val jsonStrMatch = Regex("""JSON\.parse\('([^']*)'\)""").find(html)
+            if (jsonStrMatch != null) {
+                Log.d("Filmekseni", "Found JSON.parse block")
+                val rawJson = jsonStrMatch.groupValues[1].replace("\\u0022", "\"").replace("\\\\", "\\")
+                Log.d("Filmekseni", "Raw JSON parsed length: ${rawJson.length}")
                 
-                Log.d("Filmekseni", "Parsed object link: $link, template: $template")
-                
-                if (link != null && template != null) {
-                    val decodedTemplate = String(Base64.decode(template, Base64.DEFAULT))
-                    Log.d("Filmekseni", "Decoded template: $decodedTemplate")
+                val objects = rawJson.split("},{") 
+                Log.d("Filmekseni", "Found ${objects.size} source objects")
+                for (obj in objects) {
+                    val link = Regex(""""link":"([^"]*)"""").find(obj)?.groupValues?.get(1)
+                    val template = Regex(""""template":"([^"]*)"""").find(obj)?.groupValues?.get(1)
                     
-                    val iframeSrcMatch = Regex("""data-src=\"([^\"]+)\"""").find(decodedTemplate) ?: Regex("""src=\"([^\"]+)\"""").find(decodedTemplate)
-                    if (iframeSrcMatch != null) {
-                        var iframeUrl = iframeSrcMatch.groupValues[1].replace("{url}", link)
-                        if (iframeUrl.startsWith("//")) iframeUrl = "https:$iframeUrl"
+                    Log.d("Filmekseni", "Parsed object link: $link, template: $template")
+                    
+                    if (link != null && template != null) {
+                        val decodedTemplate = String(Base64.decode(template, Base64.DEFAULT))
+                        Log.d("Filmekseni", "Decoded template: $decodedTemplate")
                         
-                        Log.d("Filmekseni", "Final iframe URL: $iframeUrl")
-                        try {
-                            val iframeRes = app.get(iframeUrl, referer = data)
-                            val iframeDoc = iframeRes.document.outerHtml()
-                            val parsedDomain = Regex("""(https?://[^/]+)""").find(iframeRes.url)?.groupValues?.get(1) ?: "https://vidload.top"
+                        val iframeSrcMatch = Regex("""data-src=\"([^\"]+)\"""").find(decodedTemplate) ?: Regex("""src=\"([^\"]+)\"""").find(decodedTemplate)
+                        if (iframeSrcMatch != null) {
+                            var iframeUrl = iframeSrcMatch.groupValues[1].replace("{url}", link)
+                            if (iframeUrl.startsWith("//")) iframeUrl = "https:$iframeUrl"
                             
-                            val m3u8Match = Regex("""file:\s*['"](.*?.m3u8)['"]""").find(iframeDoc)
-                            if (m3u8Match != null) {
-                                val m3u8Url = if (m3u8Match.groupValues[1].startsWith("http")) m3u8Match.groupValues[1] else parsedDomain + m3u8Match.groupValues[1]
-                                Log.d("Filmekseni", "Found m3u8: $m3u8Url")
-                                callback.invoke(
-                                    newExtractorLink(
-                                        source = this.name,
-                                        name = "Vidload",
-                                        url = m3u8Url,
-                                        type = ExtractorLinkType.M3U8
-                                    ) {
-                                        headers = mapOf("Referer" to iframeRes.url)
-                                        quality = Qualities.Unknown.value
-                                    }
-                                )
+                            Log.d("Filmekseni", "Final iframe URL: $iframeUrl")
+                            try {
+                                val iframeRes = app.get(iframeUrl, referer = data)
+                                val iframeDoc = iframeRes.document.outerHtml()
+                                val parsedDomain = Regex("""(https?://[^/]+)""").find(iframeRes.url)?.groupValues?.get(1) ?: "https://vidload.top"
                                 
-                                val tracks = Regex("""file:\s*['"](.*?.vtt)['"],\s*label:\s*['"](.*?)['"]""").findAll(iframeDoc)
-                                tracks.forEach { track ->
-                                    val subUrl = if (track.groupValues[1].startsWith("http")) track.groupValues[1] else parsedDomain + track.groupValues[1]
-                                    val lang = track.groupValues[2]
-                                    Log.d("Filmekseni", "Found subtitle: $lang - $subUrl")
-                                    subtitleCallback.invoke(
-                                        SubtitleFile(lang, subUrl)
+                                val m3u8Match = Regex("""file:\s*['"](.*?.m3u8)['"]""").find(iframeDoc)
+                                if (m3u8Match != null) {
+                                    val m3u8Url = if (m3u8Match.groupValues[1].startsWith("http")) m3u8Match.groupValues[1] else parsedDomain + m3u8Match.groupValues[1]
+                                    Log.d("Filmekseni", "Found m3u8: $m3u8Url")
+                                    callback.invoke(
+                                        newExtractorLink(
+                                            source = this.name,
+                                            name = "Vidload",
+                                            url = m3u8Url,
+                                            type = ExtractorLinkType.M3U8
+                                        ) {
+                                            headers = mapOf("Referer" to iframeRes.url)
+                                            quality = Qualities.Unknown.value
+                                        }
                                     )
+                                    
+                                    val tracks = Regex("""file:\s*['"](.*?.vtt)['"],\s*label:\s*['"](.*?)['"]""").findAll(iframeDoc)
+                                    tracks.forEach { track ->
+                                        val subUrl = if (track.groupValues[1].startsWith("http")) track.groupValues[1] else parsedDomain + track.groupValues[1]
+                                        val lang = track.groupValues[2]
+                                        Log.d("Filmekseni", "Found subtitle: $lang - $subUrl")
+                                        subtitleCallback.invoke(
+                                            SubtitleFile(lang, subUrl)
+                                        )
+                                    }
+                                } else {
+                                    Log.d("Filmekseni", "m3u8 not found in iframe HTML")
                                 }
-                            } else {
-                                Log.d("Filmekseni", "m3u8 not found in iframe HTML")
+                            } catch (e: Exception) {
+                                Log.e("Filmekseni", "Error fetching iframe: ${e.message}")
                             }
-                        } catch (e: Exception) {
-                            Log.e("Filmekseni", "Error fetching iframe: ${e.message}")
+                        } else {
+                            Log.d("Filmekseni", "No iframe src found in decoded template")
                         }
-                    } else {
-                        Log.d("Filmekseni", "No iframe src found in decoded template")
                     }
                 }
+            } else {
+                Log.d("Filmekseni", "Failed to find JSON.parse block in HTML")
+                val altMatch = Regex("""x-data="videoPlayerData\((.*?)\)"""").find(html)
+                if (altMatch != null) {
+                    Log.d("Filmekseni", "Found videoPlayerData but not JSON.parse: ${altMatch.groupValues[1].take(200)}")
+                }
             }
-        } else {
-            Log.d("Filmekseni", "Failed to find JSON.parse block in HTML")
-            val altMatch = Regex("""x-data="videoPlayerData\((.*?)\)"""").find(html)
-            if (altMatch != null) {
-                Log.d("Filmekseni", "Found videoPlayerData but not JSON.parse: ${altMatch.groupValues[1].take(200)}")
-            }
+            
+            return true
+        } catch (e: Exception) {
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                ErrorUtils.showPluginError(FilmekseniPlugin.appContext, this.name, "LOAD_LINKS", data)
+            }, 500)
+            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
-        
-        return true
     }
 }
 

@@ -55,29 +55,34 @@ class DiziFilm : MainAPI() {
         page: Int,
         request: MainPageRequest
     ): HomePageResponse {
-        val url = "$mainUrl${request.data}$page"
-        val response = app.get(url).text
-        val parsed = mapper.readValue<MoviesApiResponse>(response)
-        
-        val itemsList = (parsed.movies ?: emptyList()) + (parsed.series ?: emptyList())
-        val homeItems = itemsList.mapNotNull { item ->
-            val isSeries = request.name == "Diziler" || url.contains("/series")
-            val link = if (isSeries) {
-                "$mainUrl/dizi/${item.slug}"
-            } else {
-                "$mainUrl/film/${item.slug}"
-            }
+        try {
+            val url = "$mainUrl${request.data}$page"
+            val response = app.get(url).text
+            val parsed = mapper.readValue<MoviesApiResponse>(response)
             
-            newMovieSearchResponse(
-                name = item.title ?: return@mapNotNull null,
-                url = link,
-                type = if (isSeries) TvType.TvSeries else TvType.Movie
-            ) {
-                this.posterUrl = item.poster_url?.replace(".avif", ".jpg")
+            val itemsList = (parsed.movies ?: emptyList()) + (parsed.series ?: emptyList())
+            val homeItems = itemsList.mapNotNull { item ->
+                val isSeries = request.name == "Diziler" || url.contains("/series")
+                val link = if (isSeries) {
+                    "$mainUrl/dizi/${item.slug}"
+                } else {
+                    "$mainUrl/film/${item.slug}"
+                }
+                
+                newMovieSearchResponse(
+                    name = item.title ?: return@mapNotNull null,
+                    url = link,
+                    type = if (isSeries) TvType.TvSeries else TvType.Movie
+                ) {
+                    this.posterUrl = item.poster_url?.replace(".avif", ".jpg")
+                }
             }
-        }
 
-        return newHomePageResponse(request.name, homeItems, hasNext = (parsed.totalPages ?: 1) > page)
+            return newHomePageResponse(request.name, homeItems, hasNext = (parsed.totalPages ?: 1) > page)
+        } catch (e: Exception) {
+            ErrorUtils.showPluginError(DiziFilmPlugin.appContext, this.name, "MAIN_PAGE", mainUrl)
+            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
+        }
     }
 
     private fun MovieItem.toSearchResponse(): SearchResponse? {
@@ -128,74 +133,79 @@ class DiziFilm : MainAPI() {
     }
 
     override suspend fun load(url: String): LoadResponse? {
-        Log.d("DiziFilm", "load called with url: $url")
-        val html = app.get(url).text
-        Log.d("DiziFilm", "load html length: ${html.length}")
-        val isMovie = url.contains("/film/")
-        
-        if (isMovie) {
-            val movieJson = extractJsonFromNextJs(html, "movie")
-            Log.d("DiziFilm", "movieJson extracted: ${movieJson?.take(100)}...")
-            if (movieJson == null) return null
+        try {
+            Log.d("DiziFilm", "load called with url: $url")
+            val html = app.get(url).text
+            Log.d("DiziFilm", "load html length: ${html.length}")
+            val isMovie = url.contains("/film/")
             
-            val movie = try { mapper.readValue<MoviePayload>(movieJson) } catch(e:Exception) { Log.e("DiziFilm", "movie JSON parse error", e); null } ?: return null
-            
-            val title = movie.title
-            Log.d("DiziFilm", "movie title: $title")
-            if (title == null) return null
-            
-            return newMovieLoadResponse(title, url, TvType.Movie, url) {
-                this.posterUrl = movie.poster_url?.replace(".avif", ".jpg")
-                this.year = movie.year
-                this.plot = movie.description
-                if (movie.imdb_rating != null) {
-                    this.score = Score.from10(movie.imdb_rating.toString())
-                }
-                this.duration = movie.duration
-            }
-        } else {
-            val seriesJson = extractJsonFromNextJs(html, "series")
-            Log.d("DiziFilm", "seriesJson extracted: ${seriesJson?.take(100)}...")
-            if (seriesJson == null) return null
-            
-            val series = try { mapper.readValue<SeriesPayload>(seriesJson) } catch(e:Exception) { Log.e("DiziFilm", "series JSON parse error", e); null } ?: return null
-            
-            val seasonsJson = extractJsonArrayFromNextJs(html, "seasonsWithEpisodes")
-            Log.d("DiziFilm", "seasonsJson extracted: ${seasonsJson?.take(100)}...")
-            val episodesList = mutableListOf<Episode>()
-            
-            if (seasonsJson != null) {
-                try {
-                    val seasons = mapper.readValue<List<SeasonWithEpisodes>>(seasonsJson)
-                    for (season in seasons) {
-                        val sNum = season.season_number ?: continue
-                        season.episodes?.forEach { ep ->
-                            val epNum = ep.episode_number ?: return@forEach
-                            val epUrl = "$url/sezon-$sNum/bolum-$epNum"
-                            episodesList.add(newEpisode(epUrl) {
-                                this.name = ep.title ?: "$sNum. Sezon $epNum. Bölüm"
-                                this.season = sNum
-                                this.episode = epNum
-                            })
-                        }
+            if (isMovie) {
+                val movieJson = extractJsonFromNextJs(html, "movie")
+                Log.d("DiziFilm", "movieJson extracted: ${movieJson?.take(100)}...")
+                if (movieJson == null) throw Exception("Boş JSON")
+                
+                val movie = try { mapper.readValue<MoviePayload>(movieJson) } catch(e:Exception) { Log.e("DiziFilm", "movie JSON parse error", e); throw Exception("Parse Hatası") }
+                
+                val title = movie.title
+                Log.d("DiziFilm", "movie title: $title")
+                if (title == null) throw Exception("Başlık Yok")
+                
+                return newMovieLoadResponse(title, url, TvType.Movie, url) {
+                    this.posterUrl = movie.poster_url?.replace(".avif", ".jpg")
+                    this.year = movie.year
+                    this.plot = movie.description
+                    if (movie.imdb_rating != null) {
+                        this.score = Score.from10(movie.imdb_rating.toString())
                     }
-                } catch(e: Exception) {
-                    Log.e("DiziFilm", "seasons JSON parse error", e)
+                    this.duration = movie.duration
+                }
+            } else {
+                val seriesJson = extractJsonFromNextJs(html, "series")
+                Log.d("DiziFilm", "seriesJson extracted: ${seriesJson?.take(100)}...")
+                if (seriesJson == null) throw Exception("Boş JSON")
+                
+                val series = try { mapper.readValue<SeriesPayload>(seriesJson) } catch(e:Exception) { Log.e("DiziFilm", "series JSON parse error", e); throw Exception("Parse Hatası") }
+                
+                val seasonsJson = extractJsonArrayFromNextJs(html, "seasonsWithEpisodes")
+                Log.d("DiziFilm", "seasonsJson extracted: ${seasonsJson?.take(100)}...")
+                val episodesList = mutableListOf<Episode>()
+                
+                if (seasonsJson != null) {
+                    try {
+                        val seasons = mapper.readValue<List<SeasonWithEpisodes>>(seasonsJson)
+                        for (season in seasons) {
+                            val sNum = season.season_number ?: continue
+                            season.episodes?.forEach { ep ->
+                                val epNum = ep.episode_number ?: return@forEach
+                                val epUrl = "$url/sezon-$sNum/bolum-$epNum"
+                                episodesList.add(newEpisode(epUrl) {
+                                    this.name = ep.title ?: "$sNum. Sezon $epNum. Bölüm"
+                                    this.season = sNum
+                                    this.episode = epNum
+                                })
+                            }
+                        }
+                    } catch(e: Exception) {
+                        Log.e("DiziFilm", "seasons JSON parse error", e)
+                    }
+                }
+                
+                val title = series.title
+                Log.d("DiziFilm", "series title: $title")
+                if (title == null) throw Exception("Başlık Yok")
+                
+                return newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodesList) {
+                    this.posterUrl = series.poster_url?.replace(".avif", ".jpg")
+                    this.year = series.start_year
+                    this.plot = series.description
+                    if (series.imdb_rating != null) {
+                        this.score = Score.from10(series.imdb_rating.toString())
+                    }
                 }
             }
-            
-            val title = series.title
-            Log.d("DiziFilm", "series title: $title")
-            if (title == null) return null
-            
-            return newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodesList) {
-                this.posterUrl = series.poster_url?.replace(".avif", ".jpg")
-                this.year = series.start_year
-                this.plot = series.description
-                if (series.imdb_rating != null) {
-                    this.score = Score.from10(series.imdb_rating.toString())
-                }
-            }
+        } catch (e: Exception) {
+            ErrorUtils.showPluginError(DiziFilmPlugin.appContext, this.name, "LOAD_DETAILS", url)
+            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 
@@ -205,145 +215,152 @@ class DiziFilm : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        Log.e("DiziFilm", "loadLinks called with data: $data")
-        val html = app.get(data).text
-        Log.e("DiziFilm", "loadLinks html length: ${html.length}")
-        val vidlopUrls = mutableListOf<Pair<String, String>>() // URL to Name
-        
-        if (data.contains("/film/")) {
-            val movieJson = extractJsonFromNextJs(html, "movie")
-            Log.d("DiziFilm", "loadLinks movieJson extracted: ${movieJson != null}")
-            if (movieJson != null) {
+        try {
+            Log.e("DiziFilm", "loadLinks called with data: $data")
+            val html = app.get(data).text
+            Log.e("DiziFilm", "loadLinks html length: ${html.length}")
+            val vidlopUrls = mutableListOf<Pair<String, String>>() // URL to Name
+            
+            if (data.contains("/film/")) {
+                val movieJson = extractJsonFromNextJs(html, "movie")
+                Log.d("DiziFilm", "loadLinks movieJson extracted: ${movieJson != null}")
+                if (movieJson != null) {
+                    try {
+                        val movie = mapper.readValue<MoviePayload>(movieJson)
+                        Log.d("DiziFilm", "loadLinks movie parsed, parts count: ${movie.parts?.size}")
+                        movie.parts?.forEach { part ->
+                            if (!part.url.isNullOrEmpty()) {
+                                if (part.url.contains("vidlop.com")) {
+                                    val name = "Vidlop ${part.language ?: ""} ${part.quality ?: ""}".trim()
+                                    Log.d("DiziFilm", "Found Vidlop URL for movie: ${part.url} -> $name")
+                                    vidlopUrls.add(part.url to name)
+                                } else {
+                                    val name = "Server ${part.language ?: ""} ${part.quality ?: ""}".trim()
+                                    Log.d("DiziFilm", "Found other URL for movie: ${part.url}")
+                                    loadExtractor(part.url, "$mainUrl/", subtitleCallback, callback)
+                                }
+                            }
+                        }
+                    } catch(e: Exception) {
+                        Log.e("DiziFilm", "loadLinks movie parse error", e)
+                    }
+                }
+            } else if (data.contains("/sezon-")) {
+                // Episode page
+                val episodeJson = extractJsonFromNextJs(html, "episode")
+                Log.d("DiziFilm", "loadLinks episodeJson extracted: ${episodeJson != null}")
+                if (episodeJson != null) {
+                    try {
+                        val ep = mapper.readValue<EpisodeItem>(episodeJson)
+                        Log.d("DiziFilm", "loadLinks episode parsed")
+                        listOfNotNull(ep.embed_player_url_1, ep.embed_player_url_2, ep.embed_player_url_3)
+                            .forEachIndexed { index, url ->
+                                if (url.contains("vidlop.com")) {
+                                    Log.d("DiziFilm", "Found Vidlop URL for episode: $url")
+                                    vidlopUrls.add(url to "Vidlop Server ${index + 1}")
+                                } else {
+                                    Log.d("DiziFilm", "Found other URL for episode: $url")
+                                    loadExtractor(url, "$mainUrl/", subtitleCallback, callback)
+                                }
+                            }
+                    } catch(e: Exception) {
+                        Log.e("DiziFilm", "loadLinks episode parse error", e)
+                    }
+                }
+            }
+
+            Log.e("DiziFilm", "Total Vidlop URLs to process: ${vidlopUrls.size}")
+
+            // Extract Vidlop Links
+            for ((vidlopUrl, sourceName) in vidlopUrls) {
                 try {
-                    val movie = mapper.readValue<MoviePayload>(movieJson)
-                    Log.d("DiziFilm", "loadLinks movie parsed, parts count: ${movie.parts?.size}")
-                    movie.parts?.forEach { part ->
-                        if (!part.url.isNullOrEmpty()) {
-                            if (part.url.contains("vidlop.com")) {
-                                val name = "Vidlop ${part.language ?: ""} ${part.quality ?: ""}".trim()
-                                Log.d("DiziFilm", "Found Vidlop URL for movie: ${part.url} -> $name")
-                                vidlopUrls.add(part.url to name)
-                            } else {
-                                val name = "Server ${part.language ?: ""} ${part.quality ?: ""}".trim()
-                                Log.d("DiziFilm", "Found other URL for movie: ${part.url}")
-                                loadExtractor(part.url, "$mainUrl/", subtitleCallback, callback)
+                    Log.e("DiziFilm", "Fetching Vidlop URL: $vidlopUrl")
+                    val vidlopHtml = app.get(vidlopUrl, referer = mainUrl).text
+                    Log.e("DiziFilm", "Vidlop HTML length: ${vidlopHtml.length}")
+                    
+                    val scriptData = getAndUnpack(vidlopHtml)
+                    Log.e("DiziFilm", "Unpacked script length: ${scriptData.length}")
+                    
+                    // Parse unpacked script for m3u8
+                    var m3u8Url = Regex("""file\s*:\s*["']([^"']+\.m3u8[^"']*)["']""").find(scriptData)?.groupValues?.get(1)
+                    
+                    if (m3u8Url == null) {
+                        val vidlopId = Regex("""video/([a-zA-Z0-9]+)""").find(vidlopUrl)?.groupValues?.get(1)
+                        if (vidlopId != null) {
+                            Log.e("DiziFilm", "Fetching Vidlop API for ID: $vidlopId")
+                            val apiUrl = "https://vidlop.com/player/index.php?data=$vidlopId&do=getVideo"
+                            val apiResponse = app.post(
+                                apiUrl,
+                                headers = mapOf(
+                                    "Referer" to vidlopUrl,
+                                    "X-Requested-With" to "XMLHttpRequest"
+                                ),
+                                data = mapOf(
+                                    "hash" to vidlopId,
+                                    "r" to mainUrl
+                                )
+                            ).text
+                            Log.e("DiziFilm", "Vidlop API response: $apiResponse")
+                            
+                            val secureLinkMatch = Regex("""\"securedLink\"\:\"([^\"]+)\"""").find(apiResponse)
+                            if (secureLinkMatch != null) {
+                                m3u8Url = secureLinkMatch.groupValues[1].replace("\\/", "/")
                             }
                         }
                     }
-                } catch(e: Exception) {
-                    Log.e("DiziFilm", "loadLinks movie parse error", e)
-                }
-            }
-        } else if (data.contains("/sezon-")) {
-            // Episode page
-            val episodeJson = extractJsonFromNextJs(html, "episode")
-            Log.d("DiziFilm", "loadLinks episodeJson extracted: ${episodeJson != null}")
-            if (episodeJson != null) {
-                try {
-                    val ep = mapper.readValue<EpisodeItem>(episodeJson)
-                    Log.d("DiziFilm", "loadLinks episode parsed")
-                    listOfNotNull(ep.embed_player_url_1, ep.embed_player_url_2, ep.embed_player_url_3)
-                        .forEachIndexed { index, url ->
-                            if (url.contains("vidlop.com")) {
-                                Log.d("DiziFilm", "Found Vidlop URL for episode: $url")
-                                vidlopUrls.add(url to "Vidlop Server ${index + 1}")
-                            } else {
-                                Log.d("DiziFilm", "Found other URL for episode: $url")
-                                loadExtractor(url, "$mainUrl/", subtitleCallback, callback)
+                    
+                    if (m3u8Url != null) {
+                        Log.e("DiziFilm", "Found m3u8 URL: $m3u8Url")
+                        callback.invoke(
+                            newExtractorLink(
+                                source = sourceName,
+                                name = sourceName,
+                                url = m3u8Url,
+                                type = ExtractorLinkType.M3U8
+                            ) {
+                                this.referer = vidlopUrl
+                                this.quality = Qualities.Unknown.value
                             }
-                        }
-                } catch(e: Exception) {
-                    Log.e("DiziFilm", "loadLinks episode parse error", e)
-                }
-            }
-        }
-
-        Log.e("DiziFilm", "Total Vidlop URLs to process: ${vidlopUrls.size}")
-
-        // Extract Vidlop Links
-        for ((vidlopUrl, sourceName) in vidlopUrls) {
-            try {
-                Log.e("DiziFilm", "Fetching Vidlop URL: $vidlopUrl")
-                val vidlopHtml = app.get(vidlopUrl, referer = mainUrl).text
-                Log.e("DiziFilm", "Vidlop HTML length: ${vidlopHtml.length}")
-                
-                val scriptData = getAndUnpack(vidlopHtml)
-                Log.e("DiziFilm", "Unpacked script length: ${scriptData.length}")
-                
-                // Parse unpacked script for m3u8
-                var m3u8Url = Regex("""file\s*:\s*["']([^"']+\.m3u8[^"']*)["']""").find(scriptData)?.groupValues?.get(1)
-                
-                if (m3u8Url == null) {
-                    val vidlopId = Regex("""video/([a-zA-Z0-9]+)""").find(vidlopUrl)?.groupValues?.get(1)
-                    if (vidlopId != null) {
-                        Log.e("DiziFilm", "Fetching Vidlop API for ID: $vidlopId")
-                        val apiUrl = "https://vidlop.com/player/index.php?data=$vidlopId&do=getVideo"
-                        val apiResponse = app.post(
-                            apiUrl,
-                            headers = mapOf(
-                                "Referer" to vidlopUrl,
-                                "X-Requested-With" to "XMLHttpRequest"
-                            ),
-                            data = mapOf(
-                                "hash" to vidlopId,
-                                "r" to mainUrl
-                            )
-                        ).text
-                        Log.e("DiziFilm", "Vidlop API response: $apiResponse")
+                        )
+                    } else {
+                        Log.e("DiziFilm", "m3u8 URL NOT found in unpacked script!")
+                    }
+                    
+                    // Try to find subtitles
+                    val subtitlesMatch = Regex("""tracks["']?\s*:\s*\[(.*?)\]""").find(scriptData)
+                    if (subtitlesMatch != null) {
+                        val tracks = subtitlesMatch.groupValues[1]
+                        Log.e("DiziFilm", "Found subtitles tracks array length: ${tracks.length}")
+                        val fileMatch = Regex("""file["']?\s*:\s*["']([^"']+)["']""").findAll(tracks)
+                        val labelMatch = Regex("""label["']?\s*:\s*["']([^"']+)["']""").findAll(tracks)
                         
-                        val secureLinkMatch = Regex("""\"securedLink\"\:\"([^\"]+)\"""").find(apiResponse)
-                        if (secureLinkMatch != null) {
-                            m3u8Url = secureLinkMatch.groupValues[1].replace("\\/", "/")
+                        val files = fileMatch.map { it.groupValues[1] }.toList()
+                        val labels = labelMatch.map { it.groupValues[1] }.toList()
+                        
+                        for (i in files.indices) {
+                            val subUrl = files[i]
+                            val subLang = labels.getOrNull(i) ?: "Türkçe"
+                            Log.e("DiziFilm", "Found subtitle: $subLang -> $subUrl")
+                            if (subUrl.endsWith(".vtt") || subUrl.endsWith(".srt") || subUrl.endsWith(".txt")) {
+                                subtitleCallback.invoke(SubtitleFile(subLang, subUrl.replace("\\/", "/")))
+                            }
                         }
+                    } else {
+                        Log.e("DiziFilm", "Subtitles tracks NOT found")
                     }
-                }
-                
-                if (m3u8Url != null) {
-                    Log.e("DiziFilm", "Found m3u8 URL: $m3u8Url")
-                    callback.invoke(
-                        newExtractorLink(
-                            source = sourceName,
-                            name = sourceName,
-                            url = m3u8Url,
-                            type = ExtractorLinkType.M3U8
-                        ) {
-                            this.referer = vidlopUrl
-                            this.quality = Qualities.Unknown.value
-                        }
-                    )
-                } else {
-                    Log.e("DiziFilm", "m3u8 URL NOT found in unpacked script!")
-                }
-                
-                // Try to find subtitles
-                val subtitlesMatch = Regex("""tracks["']?\s*:\s*\[(.*?)\]""").find(scriptData)
-                if (subtitlesMatch != null) {
-                    val tracks = subtitlesMatch.groupValues[1]
-                    Log.e("DiziFilm", "Found subtitles tracks array length: ${tracks.length}")
-                    val fileMatch = Regex("""file["']?\s*:\s*["']([^"']+)["']""").findAll(tracks)
-                    val labelMatch = Regex("""label["']?\s*:\s*["']([^"']+)["']""").findAll(tracks)
                     
-                    val files = fileMatch.map { it.groupValues[1] }.toList()
-                    val labels = labelMatch.map { it.groupValues[1] }.toList()
-                    
-                    for (i in files.indices) {
-                        val subUrl = files[i]
-                        val subLang = labels.getOrNull(i) ?: "Türkçe"
-                        Log.e("DiziFilm", "Found subtitle: $subLang -> $subUrl")
-                        if (subUrl.endsWith(".vtt") || subUrl.endsWith(".srt") || subUrl.endsWith(".txt")) {
-                            subtitleCallback.invoke(SubtitleFile(subLang, subUrl.replace("\\/", "/")))
-                        }
-                    }
-                } else {
-                    Log.e("DiziFilm", "Subtitles tracks NOT found")
+                } catch (e: Exception) {
+                    Log.e("DiziFilm", "Vidlop extractor error for $vidlopUrl", e)
                 }
-                
-            } catch (e: Exception) {
-                Log.e("DiziFilm", "Vidlop extractor error for $vidlopUrl", e)
             }
-        }
 
-        return true
+            return true
+        } catch (e: Exception) {
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                ErrorUtils.showPluginError(DiziFilmPlugin.appContext, this.name, "LOAD_LINKS", data)
+            }, 500)
+            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
+        }
     }
     
     private fun extractJsonFromNextJs(html: String, key: String): String? {

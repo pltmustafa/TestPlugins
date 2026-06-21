@@ -126,7 +126,8 @@ class KekikStream : MainAPI() {
             val homePageList = HomePageList(pluginName, items)
             return newHomePageResponse(listOf(homePageList), hasNext = false)
         } catch (e: Exception) {
-            return newHomePageResponse(emptyList())
+            ErrorUtils.showPluginError(KekikStreamPlugin.appContext, this.name, "MAIN_PAGE", mainUrl)
+            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 
@@ -180,79 +181,84 @@ class KekikStream : MainAPI() {
     }
 
     override suspend fun load(url: String): LoadResponse? {
-        val queryPart = url.substringAfter("?", "")
-        val queryParams = queryPart.split("&").associate { 
-            val parts = it.split("=")
-            parts[0] to if (parts.size > 1) parts[1] else ""
-        }
-        
-        val pluginRaw = queryParams["plugin"] ?: return null
-        val decodedPluginName = URLDecoder.decode(pluginRaw, "UTF-8")
-        val decodedUrl = queryParams["url"] ?: return null
-        
-        val apiUrl = "$mainUrl/load_item?plugin=$decodedPluginName&encoded_url=$decodedUrl"
+        try {
+            val queryPart = url.substringAfter("?", "")
+            val queryParams = queryPart.split("&").associate { 
+                val parts = it.split("=")
+                parts[0] to if (parts.size > 1) parts[1] else ""
+            }
+            
+            val pluginRaw = queryParams["plugin"] ?: throw Exception("Eklenti adı eksik")
+            val decodedPluginName = URLDecoder.decode(pluginRaw, "UTF-8")
+            val decodedUrl = queryParams["url"] ?: throw Exception("URL eksik")
+            
+            val apiUrl = "$mainUrl/load_item?plugin=$decodedPluginName&encoded_url=$decodedUrl"
 
-        val reqBuilder = Request.Builder().url(apiUrl)
-        headers.forEach { (k, v) -> reqBuilder.addHeader(k, v) }
-        val responseText = asyncClient.newCall(reqBuilder.build()).execute().body?.string() ?: ""
+            val reqBuilder = Request.Builder().url(apiUrl)
+            headers.forEach { (k, v) -> reqBuilder.addHeader(k, v) }
+            val responseText = asyncClient.newCall(reqBuilder.build()).execute().body?.string() ?: ""
 
-        val res = mapper.readValue(responseText, com.fasterxml.jackson.module.kotlin.jacksonTypeRef<WBResponse<WBItemDetail>>())
-        val item = res?.result ?: return null
+            val res = mapper.readValue(responseText, com.fasterxml.jackson.module.kotlin.jacksonTypeRef<WBResponse<WBItemDetail>>())
+            val item = res?.result ?: throw Exception("İçerik detayı bulunamadı")
 
-        val titleStr = item.title ?: item.name ?: "Bilinmeyen Başlık"
-        val posterStr = fixUrlNull(item.poster)
-        val descStr = item.description
-        val yearInt = item.year?.toString()?.toIntOrNull()
-        val ratingStr = item.rating?.toString()
-        
-        val tagsList = when (val t = item.tags) {
-            is List<*> -> t.mapNotNull { it?.toString() }
-            is String -> listOf(t)
-            else -> emptyList()
-        }
-        
-        val actorsList = when (val a = item.actors) {
-            is List<*> -> a.mapNotNull { it?.toString() }
-            is String -> listOf(a)
-            else -> emptyList()
-        }
-
-        val isSeries = !item.episodes.isNullOrEmpty()
-
-        if (isSeries) {
-            val episodes = item.episodes!!.mapNotNull { ep ->
-                val epUrl = ep.url ?: return@mapNotNull null
-                val encodedPlugin = URLEncoder.encode(decodedPluginName, "UTF-8")
-                val epFinalUrl = "wb://watchbuddy?plugin=$encodedPlugin&url=$epUrl"
-                
-                newEpisode(epFinalUrl) {
-                    this.name = ep.title ?: "Bölüm ${ep.episode}"
-                    this.season = ep.season
-                    this.episode = ep.episode
-                }
+            val titleStr = item.title ?: item.name ?: "Bilinmeyen Başlık"
+            val posterStr = fixUrlNull(item.poster)
+            val descStr = item.description
+            val yearInt = item.year?.toString()?.toIntOrNull()
+            val ratingStr = item.rating?.toString()
+            
+            val tagsList = when (val t = item.tags) {
+                is List<*> -> t.mapNotNull { it?.toString() }
+                is String -> listOf(t)
+                else -> emptyList()
+            }
+            
+            val actorsList = when (val a = item.actors) {
+                is List<*> -> a.mapNotNull { it?.toString() }
+                is String -> listOf(a)
+                else -> emptyList()
             }
 
-            return newTvSeriesLoadResponse(titleStr, url, TvType.TvSeries, episodes) {
-                this.posterUrl = posterStr
-                this.plot = descStr
-                this.year = yearInt
-                this.tags = tagsList
-                if (ratingStr != null) {
-                    try { this.score = Score.from10(ratingStr) } catch (e: Exception) {}
+            val isSeries = !item.episodes.isNullOrEmpty()
+
+            if (isSeries) {
+                val episodes = item.episodes!!.mapNotNull { ep ->
+                    val epUrl = ep.url ?: return@mapNotNull null
+                    val encodedPlugin = URLEncoder.encode(decodedPluginName, "UTF-8")
+                    val epFinalUrl = "wb://watchbuddy?plugin=$encodedPlugin&url=$epUrl"
+                    
+                    newEpisode(epFinalUrl) {
+                        this.name = ep.title ?: "Bölüm ${ep.episode}"
+                        this.season = ep.season
+                        this.episode = ep.episode
+                    }
                 }
-                addActors(actorsList.map { Actor(it) })
-            }
-        } else {
-            return newMovieLoadResponse(titleStr, url, TvType.Movie, url) {
-                this.posterUrl = posterStr
-                this.plot = descStr
-                this.year = yearInt
-                this.tags = tagsList
-                if (ratingStr != null) {
-                    try { this.score = Score.from10(ratingStr) } catch (e: Exception) {}
+
+                return newTvSeriesLoadResponse(titleStr, url, TvType.TvSeries, episodes) {
+                    this.posterUrl = posterStr
+                    this.plot = descStr
+                    this.year = yearInt
+                    this.tags = tagsList
+                    if (ratingStr != null) {
+                        try { this.score = Score.from10(ratingStr) } catch (e: Exception) {}
+                    }
+                    addActors(actorsList.map { Actor(it) })
                 }
-                addActors(actorsList.map { Actor(it) })
+            } else {
+                return newMovieLoadResponse(titleStr, url, TvType.Movie, url) {
+                    this.posterUrl = posterStr
+                    this.plot = descStr
+                    this.year = yearInt
+                    this.tags = tagsList
+                    if (ratingStr != null) {
+                        try { this.score = Score.from10(ratingStr) } catch (e: Exception) {}
+                    }
+                    addActors(actorsList.map { Actor(it) })
+                }
             }
+        } catch (e: Exception) {
+            ErrorUtils.showPluginError(KekikStreamPlugin.appContext, this.name, "LOAD_DETAILS", url)
+            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 
@@ -264,9 +270,9 @@ class KekikStream : MainAPI() {
                 parts[0] to if (parts.size > 1) parts[1] else ""
             }
             
-            val pluginRaw = queryParams["plugin"] ?: return false
+            val pluginRaw = queryParams["plugin"] ?: throw Exception("Eklenti adı bulunamadı")
             val decodedPluginName = URLDecoder.decode(pluginRaw, "UTF-8")
-            val decodedUrl = queryParams["url"] ?: return false
+            val decodedUrl = queryParams["url"] ?: throw Exception("URL bulunamadı")
             
             Log.d("KEKIK_DEBUG", "loadLinks called for plugin: $decodedPluginName, url: $decodedUrl")
             
@@ -282,7 +288,7 @@ class KekikStream : MainAPI() {
             
             if (links == null || links.isEmpty()) {
                 Log.e("KEKIK_DEBUG", "loadLinks found no links for $decodedPluginName. Response: $responseText")
-                return false
+                throw Exception("Link bulunamadı")
             }
 
             Log.d("KEKIK_DEBUG", "Extracted ${links.size} links for $decodedPluginName")
@@ -336,8 +342,10 @@ class KekikStream : MainAPI() {
             }
             return true
         } catch (e: Exception) {
-            Log.e("KEKIK_DEBUG", "loadLinks Error: ${e.message}", e)
-            return false
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                ErrorUtils.showPluginError(KekikStreamPlugin.appContext, this.name, "LOAD_LINKS", data)
+            }, 500)
+            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 

@@ -15,6 +15,7 @@ import okhttp3.Request
 @CloudstreamPlugin
 class KekikStreamPlugin : Plugin() {
     companion object {
+        var appContext: Context? = null
         var sharedPrefs: android.content.SharedPreferences? = null
         private const val PREFS_NAME = "KekikStreamSettings"
 
@@ -36,6 +37,7 @@ class KekikStreamPlugin : Plugin() {
     }
 
     override fun load(context: Context) {
+        appContext = context
         sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         var savedPlugins = loadSavedPlugins()
         
