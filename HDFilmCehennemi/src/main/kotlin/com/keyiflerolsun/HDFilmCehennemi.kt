@@ -245,7 +245,7 @@ class HDFilmCehennemi : MainAPI() {
                 .map { it.trim('"', ' ', '\'') }
                 .joinToString("")
             
-            var result = valueParts.reversed()
+            var result = valueParts
             
             result = result.map { c ->
                 when {
@@ -257,17 +257,20 @@ class HDFilmCehennemi : MainAPI() {
             
             val decodedBytes = android.util.Base64.decode(result, android.util.Base64.DEFAULT)
             
+            val reversedBytes = decodedBytes.reversedArray()
+            
             val magicNumberRegex = Regex("""\((\d+)%\(i\+5\)""")
             val magicMatch = magicNumberRegex.find(jsCode)
             val magicNumber = magicMatch?.groupValues?.get(1)?.toIntOrNull() ?: 399756995
             
             var unmix = ""
-            for (i in decodedBytes.indices) {
-                var charCode = decodedBytes[i].toInt() and 0xFF
+            for (i in reversedBytes.indices) {
+                var charCode = reversedBytes[i].toInt() and 0xFF
                 charCode = (charCode - (magicNumber % (i + 5)) + 256) % 256
                 unmix += charCode.toChar()
             }
             
+            Log.d("HDCH_Extractor", "decryptNewFormat -> success! Decrypted URL part length: ${unmix.length}")
             return unmix
         } catch (e: Exception) {
             Log.e("HDCH_Extractor", "Error decrypting new format: ${e.message}")
