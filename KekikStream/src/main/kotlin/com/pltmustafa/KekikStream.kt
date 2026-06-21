@@ -264,6 +264,11 @@ class KekikStream : MainAPI() {
 
     override suspend fun loadLinks(data: String, isCasting: Boolean, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit): Boolean {
         try {
+        var _linksFound = 0
+        val _callback: (ExtractorLink) -> Unit = { link ->
+            _linksFound++
+            callback.invoke(link)
+        }
             val queryPart = data.substringAfter("?", "")
             val queryParams = queryPart.split("&").associate { 
                 val parts = it.split("=")
@@ -311,6 +316,8 @@ class KekikStream : MainAPI() {
                         val uri = java.net.URI(ref)
                         val origin = "${uri.scheme}://${uri.host}"
                         customHeaders["Origin"] = origin
+        if (_linksFound == 0) throw Exception("Sayfada hiçbir link bulunamadı, site yapısı değişmiş olabilir.")
+        return true
                     } catch (e: Exception) {}
                 }
                 

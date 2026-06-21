@@ -167,6 +167,11 @@ class DiziBal : MainAPI() {
 
     override suspend fun loadLinks(data: String, isCasting: Boolean, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit): Boolean {
         try {
+        var _linksFound = 0
+        val _callback: (ExtractorLink) -> Unit = { link ->
+            _linksFound++
+            callback.invoke(link)
+        }
             var streamUrl = data
 
             if (data.startsWith("$apiUrl/series/")) {
@@ -210,7 +215,7 @@ class DiziBal : MainAPI() {
                         println("DiziBal Extractor urlToStream: $urlToStream")
                         
                         if (urlToStream != null && urlToStream.isNotBlank()) {
-                            callback(newExtractorLink(
+                            _callback(newExtractorLink(
                                 source = "DiziBal",
                                 name = "DiziBal HD",
                                 url = urlToStream,
@@ -234,6 +239,8 @@ class DiziBal : MainAPI() {
                             }
                         }
                     }
+        if (_linksFound == 0) throw Exception("Sayfada hiçbir link bulunamadı, site yapısı değişmiş olabilir.")
+        return true
                 } catch (e: Exception) {
                     println("DiziBal Extractor error: ${e.message}")
                     e.printStackTrace()

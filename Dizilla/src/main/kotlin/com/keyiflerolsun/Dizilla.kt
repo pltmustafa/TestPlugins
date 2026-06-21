@@ -416,6 +416,11 @@ class Dizilla : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         try {
+        var _linksFound = 0
+        val _callback: (ExtractorLink) -> Unit = { link ->
+            _linksFound++
+            callback.invoke(link)
+        }
             val document = app.get(data, interceptor = interceptor).document
             val script = document.selectFirst("script#__NEXT_DATA__")?.data() ?: return false
 
@@ -462,7 +467,7 @@ class Dizilla : MainAPI() {
 
                     if (!finalUrl.isNullOrEmpty()) {
                         Log.d("DizillaDebug", "BİNGO! Regex ile Kırık Veriden Alınan Link: $finalUrl")
-                        loadExtractor(finalUrl, "$mainUrl/", subtitleCallback, callback)
+                        loadExtractor(finalUrl, "$mainUrl/", subtitleCallback, _callback)
                         linkFound = true
                     }
                 }
@@ -473,6 +478,8 @@ class Dizilla : MainAPI() {
             }
 
             return linkFound
+        if (_linksFound == 0) throw Exception("Sayfada hiçbir link bulunamadı, site yapısı değişmiş olabilir.")
+        return true
 
         } catch (e: Exception) {
             android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({

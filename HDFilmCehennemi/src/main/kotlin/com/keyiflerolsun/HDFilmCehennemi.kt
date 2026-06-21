@@ -299,7 +299,13 @@ class HDFilmCehennemi : MainAPI() {
             val unmixed = decryptNewFormat(videoData)
             extractFinalUrl(unmixed)
         }
+        
         Log.d("HDCH_Extractor", "Source: $source | Final URL: $lastUrl")
+        
+        if (lastUrl.isBlank()) {
+            throw Exception("Video URL decrypt edilemedi (şifre kırma başarısız), site algoritması değişmiş!")
+        }
+        
         val subData   = script.substringAfter("tracks: [").substringBefore("]")
         AppUtils.tryParseJson<List<SubSource>>("[${subData}]")?.filter { it.kind == "captions"}?.map {
             val subtitleUrl = "${mainUrl}${it.file}/"
@@ -339,13 +345,23 @@ override suspend fun loadLinks(
     try {
         Log.d("HDCH_Extractor", "loadLinks processing: $data")
         val document = app.get(data, interceptor = interceptor).document
+        
+        val altLinks = document.select("div.alternative-links")
+        Log.d("HDCH_Extractor", "Found alternative-links divs: ${altLinks.size}")
+        
+        var linksFound = 0
 
-        document.select("div.alternative-links").map { element ->
+        altLinks.map { element ->
             element to element.attr("data-lang").uppercase()
         }.forEach { (element, langCode) ->
-            element.select("button.alternative-link").map { button ->
+            val buttons = element.select("button.alternative-link")
+            Log.d("HDCH_Extractor", "Found ${buttons.size} buttons for lang $langCode")
+            
+            buttons.map { button ->
                 button.text().replace("(HDrip Xbet)", "").trim() + " $langCode" to button.attr("data-video")
             }.forEach { (source, videoID) ->
+                linksFound++
+                Log.d("HDCH_Extractor", "Processing source: $source, videoID: $videoID")
                 val apiGet = app.get(
                     "${mainUrl}/video/$videoID/", interceptor = interceptor,
                     headers = mapOf(
@@ -355,7 +371,13 @@ override suspend fun loadLinks(
                     referer = data
                 ).text
                 Log.d("HDCH_Extractor", "apiGet -> response: $apiGet")
-                var iframe = Regex("""data-src=\\"([^"]+)""").find(apiGet)?.groupValues?.get(1)!!.replace("\\", "")
+                var iframe = Regex("""data-src=\\"([^"]+)""").find(apiGet)?.groupValues?.get(1)?.replace("\\", "")
+                
+                if (iframe == null) {
+                    Log.d("HDCH_Extractor", "Iframe regex failed to find data-src in apiGet")
+                    return@forEach
+                }
+                
                 if (iframe.contains("rapidrame")) {
                     iframe = "${mainUrl}/rplayer/" + iframe.substringAfter("?rapidrame_id=")
                 } else if (iframe.contains("mobi")) {
@@ -366,8 +388,16 @@ override suspend fun loadLinks(
                 invokeLocalSource(source, iframe, subtitleCallback, callback)
             }
         }
+        
+        Log.d("HDCH_Extractor", "Total links processed: $linksFound")
+        if (linksFound == 0) {
+            Log.e("HDCH_Extractor", "No links found, throwing exception to trigger popup!")
+            throw Exception("Sayfada hiçbir link bulunamadı, site yapısı değişmiş olabilir.")
+        }
+        
         return true
     } catch (e: Exception) {
+        Log.e("HDCH_Extractor", "loadLinks error: ${e.message}")
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
             ErrorUtils.showPluginError(HDFilmCehennemiPlugin.appContext, this.name, "LOAD_LINKS", data)
         }, 500)

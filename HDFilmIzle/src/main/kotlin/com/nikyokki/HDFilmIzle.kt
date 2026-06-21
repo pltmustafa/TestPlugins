@@ -232,14 +232,20 @@ class HDFilmIzle : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         try {
+        var _linksFound = 0
+        val _callback: (ExtractorLink) -> Unit = { link ->
+            _linksFound++
+            callback.invoke(link)
+        }
             Log.d("HDF", "data » ${data}")
             val document = app.get(data).document
 
             val iframe = document.selectFirst("iframe")?.attr("data-src") ?: ""
             Log.d("HDF", "iframe » ${iframe}")
-            loadExtractor(iframe, mainUrl, subtitleCallback, callback)
+            loadExtractor(iframe, mainUrl, subtitleCallback, _callback)
 
-            return true
+            if (_linksFound == 0) throw Exception("Sayfada hiçbir link bulunamadı, site yapısı değişmiş olabilir.")
+        return true
         } catch (e: Exception) {
             android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                 ErrorUtils.showPluginError(HDFilmIzlePlugin.appContext, this.name, "LOAD_LINKS", data)

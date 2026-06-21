@@ -175,6 +175,11 @@ class FullHDFilm : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         try {
+        var _linksFound = 0
+        val _callback: (ExtractorLink) -> Unit = { link ->
+            _linksFound++
+            callback.invoke(link)
+        }
             val headers = mapOf(
                 "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
                 "Referer" to mainUrl
@@ -232,6 +237,8 @@ class FullHDFilm : MainAPI() {
                                 subtitleCallback(com.lagradost.cloudstream3.SubtitleFile("Türkçe", subtitleUrl))
                                 Log.d("FHDF", "Subtitle added: $subtitleUrl")
                             }
+        if (_linksFound == 0) throw Exception("Sayfada hiçbir link bulunamadı, site yapısı değişmiş olabilir.")
+        return true
                         } catch (e: Exception) {
                             Log.d("FHDF", "Subtitle URL error: ${e.message}")
                         }

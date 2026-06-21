@@ -257,6 +257,11 @@ class DiziPal : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         try {
+        var _linksFound = 0
+        val _callback: (ExtractorLink) -> Unit = { link ->
+            _linksFound++
+            callback.invoke(link)
+        }
             Log.d("DiziPal", "--> loadLinks ÇAĞRILDI. Gelen URL: $data")
             val doc = app.get(data).document
             
@@ -285,12 +290,13 @@ class DiziPal : MainAPI() {
                     url = iframeUrl,
                     referer = data, // Videonun bulunduğu sayfa
                     subtitleCallback = subtitleCallback,
-                    callback = callback
+                    callback = _callback
                 )
             } else {
                 Log.e("DiziPal", "--> HATA: iframeUrl tamamen BOŞ. Video linki bulunamadı!")
             }
-            return true
+            if (_linksFound == 0) throw Exception("Sayfada hiçbir link bulunamadı, site yapısı değişmiş olabilir.")
+        return true
         } catch (e: Exception) {
             android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                 ErrorUtils.showPluginError(DiziPalPlugin.appContext, this.name, "LOAD_LINKS", data)

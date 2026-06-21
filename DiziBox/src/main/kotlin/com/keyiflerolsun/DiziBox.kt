@@ -280,6 +280,11 @@ private fun Element.toMainPageResult(): SearchResponse? {
 
     override suspend fun loadLinks(data: String, isCasting: Boolean, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit): Boolean {
         try {
+        var _linksFound = 0
+        val _callback: (ExtractorLink) -> Unit = { link ->
+            _linksFound++
+            callback.invoke(link)
+        }
             Log.d("DZBX", "data » $data")
             val document = app.get(
                 data,
@@ -293,7 +298,7 @@ private fun Element.toMainPageResult(): SearchResponse? {
             var iframe = document.selectFirst("div#video-area iframe")?.attr("src")?: return false
             Log.d("DZBX", "iframe » $iframe")
 
-            iframeDecode(data, iframe, subtitleCallback, callback)
+            iframeDecode(data, iframe, subtitleCallback, _callback)
 
             document.select("div.video-toolbar option[value]").forEach {
                 val altLink = it.attr("value")
@@ -309,10 +314,11 @@ private fun Element.toMainPageResult(): SearchResponse? {
                 iframe = subDoc.selectFirst("div#video-area iframe")?.attr("src")?: return false
                 Log.d("DZBX", "iframe » $iframe")
 
-                iframeDecode(data, iframe, subtitleCallback, callback)
+                iframeDecode(data, iframe, subtitleCallback, _callback)
             }
 
-            return true
+            if (_linksFound == 0) throw Exception("Sayfada hiçbir link bulunamadı, site yapısı değişmiş olabilir.")
+        return true
         } catch (e: Exception) {
             android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                 ErrorUtils.showPluginError(DiziBoxPlugin.appContext, this.name, "LOAD_LINKS", data)

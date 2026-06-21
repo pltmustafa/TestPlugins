@@ -234,6 +234,11 @@ class YabanciDizi : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         try {
+        var _linksFound = 0
+        val _callback: (ExtractorLink) -> Unit = { link ->
+            _linksFound++
+            callback.invoke(link)
+        }
             Log.d("YBD", "data » ${data}")
             val document = app.get(data).document
             val timestampMillis = (System.currentTimeMillis() - 50000)
@@ -289,10 +294,10 @@ class YabanciDizi : MainAPI() {
                                         Log.d("YBD", "drives sonrası da boş!")
                                         return@forEach
                                     }
-                                    loadMac(subFrame, callback, dilAd)
+                                    loadMac(subFrame, _callback, dilAd)
                                 } else {
                                     Log.d("YBD", "Mac subFrame dolu, devam")
-                                    loadMac(subFrame, callback, dilAd)
+                                    loadMac(subFrame, _callback, dilAd)
                                 }
 
                             } else if (name.contains("VidMoly")) {
@@ -306,7 +311,7 @@ class YabanciDizi : MainAPI() {
                                 Log.d("YBD", "Vidmoly subFrame -> $subFrame")
                                 if (subFrame.isNotEmpty()) {
                                     loadExtractor(subFrame, "${mainUrl}/", subtitleCallback) { link ->
-                                        callback.invoke(link)
+                                        _callback.invoke(link)
                                     }
                                 } else {
                                     Log.d("YBD", "VidMoly iframe bulunamadı!")
@@ -322,12 +327,14 @@ class YabanciDizi : MainAPI() {
                                 Log.d("YBD", "Okru subFrame -> $subFrame")
                                 if (subFrame.isNotEmpty()) {
                                     loadExtractor(subFrame, "${mainUrl}/", subtitleCallback) { link ->
-                                        callback.invoke(link)
+                                        _callback.invoke(link)
                                     }
                                 } else {
                                     Log.d("YBD", "Okru iframe bulunamadı!")
                                 }
                             }
+        if (_linksFound == 0) throw Exception("Sayfada hiçbir link bulunamadı, site yapısı değişmiş olabilir.")
+        return true
                         } catch (e: Exception) {
                             Log.e("YBD", "Host: $name işlenirken hata: ${e.message}", e)
                         }

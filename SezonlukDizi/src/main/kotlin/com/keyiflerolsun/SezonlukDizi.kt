@@ -133,6 +133,11 @@ class SezonlukDizi : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         try {
+        var _linksFound = 0
+        val _callback: (ExtractorLink) -> Unit = { link ->
+            _linksFound++
+            callback.invoke(link)
+        }
             Log.d("SZD", "data » $data")
             val req = app.get(data)
             val document = req.document
@@ -165,7 +170,7 @@ class SezonlukDizi : MainAPI() {
                     val iframeSrc = veriResponse.selectFirst("iframe")?.attr("src")
                     val iframe = fixUrlNull(iframeSrc) ?: continue
                     loadExtractor(iframe, "${baseUrl}/", subtitleCallback) { link ->
-                        callback.invoke(
+                        _callback.invoke(
                             ExtractorLink(
                                 source = "AltYazı - ${veri.baslik}",
                                 name = "AltYazı - ${veri.baslik}",
@@ -206,7 +211,7 @@ class SezonlukDizi : MainAPI() {
                     Log.d("SZD", "dil»0 | iframe » $iframe")
 
                     loadExtractor(iframe, "${baseUrl}/", subtitleCallback) { link ->
-                        callback.invoke(
+                        _callback.invoke(
                             ExtractorLink(
                                 source = "Dublaj - ${veri.baslik}",
                                 name = "Dublaj - ${veri.baslik}",
@@ -222,7 +227,8 @@ class SezonlukDizi : MainAPI() {
                 }
             }
 
-            return true
+            if (_linksFound == 0) throw Exception("Sayfada hiçbir link bulunamadı, site yapısı değişmiş olabilir.")
+        return true
         } catch (e: Exception) {
             android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                 ErrorUtils.showPluginError(SezonlukDiziPlugin.appContext, this.name, "LOAD_LINKS", data)

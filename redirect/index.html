@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Cloudstream Yönlendiriliyor...</title>
+    <script type="text/javascript">
+        window.onload = function() {
+            var urlParams = new URLSearchParams(window.location.search);
+            var redirectUrl = urlParams.get('r');
+            if (redirectUrl) {
+                window.location.href = redirectUrl;
+            } else {
+                document.body.innerHTML = "Yönlendirilecek link bulunamadı.";
+            }
+        }
+    </script>
+</head>
+<body>
+    Yönlendiriliyorsunuz... Lütfen bekleyin. Eğer otomatik olarak geçiş yapmazsa <a id="manual-link" href="#">buraya tıklayın</a>.
+    <script type="text/javascript">
+        var urlParams = new URLSearchParams(window.location.search);
+        var redirectUrl = urlParams.get('r');
+        if (redirectUrl) {
+            document.getElementById('manual-link').href = redirectUrl;
+        }
+    </script>
+</body>
+</html>

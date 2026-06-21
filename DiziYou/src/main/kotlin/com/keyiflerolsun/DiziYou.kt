@@ -154,6 +154,11 @@ class DiziYou : MainAPI() {
 
     override suspend fun loadLinks(data: String, isCasting: Boolean, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit): Boolean {
         try {
+        var _linksFound = 0
+        val _callback: (ExtractorLink) -> Unit = { link ->
+            _linksFound++
+            callback.invoke(link)
+        }
             Log.d("DZY", "data » $data")
             val document = app.get(data).document
 
@@ -192,7 +197,7 @@ class DiziYou : MainAPI() {
             }
 
             for (stream in streamUrls) {
-                callback.invoke(
+                _callback.invoke(
                  newExtractorLink(
                     source = this.name,
                     name = this.name,
@@ -205,7 +210,8 @@ class DiziYou : MainAPI() {
                 )
             }
 
-            return true
+            if (_linksFound == 0) throw Exception("Sayfada hiçbir link bulunamadı, site yapısı değişmiş olabilir.")
+        return true
         } catch (e: Exception) {
             android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                 ErrorUtils.showPluginError(DiziYouPlugin.appContext, this.name, "LOAD_LINKS", data)

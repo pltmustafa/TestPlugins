@@ -106,6 +106,11 @@ class FilmModu : MainAPI() {
 
     override suspend fun loadLinks(data: String, isCasting: Boolean, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit): Boolean {
         try {
+        var _linksFound = 0
+        val _callback: (ExtractorLink) -> Unit = { link ->
+            _linksFound++
+            callback.invoke(link)
+        }
             Log.d("FLMMD", "data » $data")
             val document = app.get(data).document
 
@@ -130,7 +135,7 @@ class FilmModu : MainAPI() {
                 }
 
                 vidReq.sources?.forEach { source ->
-                    callback.invoke(
+                    _callback.invoke(
                         newExtractorLink(
                             source  = "${this.name} - $altName",
                             name    = "${this.name} - $altName",
@@ -144,7 +149,8 @@ class FilmModu : MainAPI() {
                 }
             }
 
-            return true
+            if (_linksFound == 0) throw Exception("Sayfada hiçbir link bulunamadı, site yapısı değişmiş olabilir.")
+        return true
         } catch (e: Exception) {
             android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                 ErrorUtils.showPluginError(FilmModuPlugin.appContext, this.name, "LOAD_LINKS", data)

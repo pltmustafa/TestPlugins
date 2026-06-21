@@ -186,6 +186,11 @@ class Filmekseni : MainAPI() {
 
     override suspend fun loadLinks(data: String, isCasting: Boolean, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit): Boolean {
         try {
+        var _linksFound = 0
+        val _callback: (ExtractorLink) -> Unit = { link ->
+            _linksFound++
+            callback.invoke(link)
+        }
             Log.d("Filmekseni", "loadLinks() called with data: $data")
             val html = app.get(data).document.outerHtml()
             
@@ -222,7 +227,7 @@ class Filmekseni : MainAPI() {
                                 if (m3u8Match != null) {
                                     val m3u8Url = if (m3u8Match.groupValues[1].startsWith("http")) m3u8Match.groupValues[1] else parsedDomain + m3u8Match.groupValues[1]
                                     Log.d("Filmekseni", "Found m3u8: $m3u8Url")
-                                    callback.invoke(
+                                    _callback.invoke(
                                         newExtractorLink(
                                             source = this.name,
                                             name = "Vidload",
@@ -246,6 +251,8 @@ class Filmekseni : MainAPI() {
                                 } else {
                                     Log.d("Filmekseni", "m3u8 not found in iframe HTML")
                                 }
+        if (_linksFound == 0) throw Exception("Sayfada hiçbir link bulunamadı, site yapısı değişmiş olabilir.")
+        return true
                             } catch (e: Exception) {
                                 Log.e("Filmekseni", "Error fetching iframe: ${e.message}")
                             }

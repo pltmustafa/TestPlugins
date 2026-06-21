@@ -208,6 +208,11 @@ override suspend fun loadLinks(
     callback: (ExtractorLink) -> Unit
 ): Boolean {
     try {
+        var _linksFound = 0
+        val _callback: (ExtractorLink) -> Unit = { link ->
+            _linksFound++
+            callback.invoke(link)
+        }
         Log.d("STF", "data » $data")
         val document = app.get(data).document
 
@@ -235,9 +240,10 @@ override suspend fun loadLinks(
                 if (partKey != null) "$sourceIframe?partKey=$partKey" else sourceIframe
             }
 
-            loadExtractor(finalUrl, "$mainUrl/", subtitleCallback, callback)
+            loadExtractor(finalUrl, "$mainUrl/", subtitleCallback, _callback)
         }
 
+        if (_linksFound == 0) throw Exception("Sayfada hiçbir link bulunamadı, site yapısı değişmiş olabilir.")
         return true
     } catch (e: Exception) {
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({

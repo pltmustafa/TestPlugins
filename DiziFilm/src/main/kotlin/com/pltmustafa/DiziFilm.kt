@@ -216,6 +216,11 @@ class DiziFilm : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         try {
+        var _linksFound = 0
+        val _callback: (ExtractorLink) -> Unit = { link ->
+            _linksFound++
+            callback.invoke(link)
+        }
             Log.e("DiziFilm", "loadLinks called with data: $data")
             val html = app.get(data).text
             Log.e("DiziFilm", "loadLinks html length: ${html.length}")
@@ -237,10 +242,12 @@ class DiziFilm : MainAPI() {
                                 } else {
                                     val name = "Server ${part.language ?: ""} ${part.quality ?: ""}".trim()
                                     Log.d("DiziFilm", "Found other URL for movie: ${part.url}")
-                                    loadExtractor(part.url, "$mainUrl/", subtitleCallback, callback)
+                                    loadExtractor(part.url, "$mainUrl/", subtitleCallback, _callback)
                                 }
                             }
                         }
+        if (_linksFound == 0) throw Exception("Sayfada hiçbir link bulunamadı, site yapısı değişmiş olabilir.")
+        return true
                     } catch(e: Exception) {
                         Log.e("DiziFilm", "loadLinks movie parse error", e)
                     }

@@ -330,6 +330,11 @@ class SelcukFlix : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         try {
+        var _linksFound = 0
+        val _callback: (ExtractorLink) -> Unit = { link ->
+            _linksFound++
+            callback.invoke(link)
+        }
             Log.d("SFX", "data » $data")
             val objectMapper = ObjectMapper().registerModule(KotlinModule.Builder().build())
             objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
@@ -373,10 +378,11 @@ class SelcukFlix : MainAPI() {
             iframes.forEach { it ->
                 val iframe = fixUrlNull(Jsoup.parse(it.sourceContent).select("iframe").attr("src"))
                 Log.d("SFX", "iframe » $iframe")
-                loadExtractor(iframe!!, "${mainUrl}/", subtitleCallback, callback)
+                loadExtractor(iframe!!, "${mainUrl}/", subtitleCallback, _callback)
             }
 
-            return true
+            if (_linksFound == 0) throw Exception("Sayfada hiçbir link bulunamadı, site yapısı değişmiş olabilir.")
+        return true
         } catch (e: Exception) {
             android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                 ErrorUtils.showPluginError(SelcukFlixPlugin.appContext, this.name, "LOAD_LINKS", data)

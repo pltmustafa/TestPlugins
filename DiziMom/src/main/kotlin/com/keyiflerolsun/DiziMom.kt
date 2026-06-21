@@ -139,6 +139,11 @@ class DiziMom : MainAPI() {
 
     override suspend fun loadLinks(data: String, isCasting: Boolean, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit): Boolean {
         try {
+        var _linksFound = 0
+        val _callback: (ExtractorLink) -> Unit = { link ->
+            _linksFound++
+            callback.invoke(link)
+        }
             Log.d("DZM", "data » $data")
 
             val ua = mapOf("User-Agent" to "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36")
@@ -170,10 +175,11 @@ class DiziMom : MainAPI() {
 
             for (iframe in iframes) {
                 Log.d("DZM", "iframe » $iframe")
-                loadExtractor(iframe, "${mainUrl}/", subtitleCallback, callback)
+                loadExtractor(iframe, "${mainUrl}/", subtitleCallback, _callback)
             }
 
-            return true
+            if (_linksFound == 0) throw Exception("Sayfada hiçbir link bulunamadı, site yapısı değişmiş olabilir.")
+        return true
         } catch (e: Exception) {
             android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                 ErrorUtils.showPluginError(DiziMomPlugin.appContext, this.name, "LOAD_LINKS", data)

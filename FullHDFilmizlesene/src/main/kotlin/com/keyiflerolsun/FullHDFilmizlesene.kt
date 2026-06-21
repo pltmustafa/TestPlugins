@@ -182,6 +182,11 @@ class FullHDFilmizlesene : MainAPI() {
 
     override suspend fun loadLinks(data: String, isCasting: Boolean, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit): Boolean {
         try {
+        var _linksFound = 0
+        val _callback: (ExtractorLink) -> Unit = { link ->
+            _linksFound++
+            callback.invoke(link)
+        }
             Log.d("FHD", "data » $data")
             val document    = app.get(data).document
             val videoLinks = getVideoLinks(document)
@@ -193,14 +198,15 @@ class FullHDFilmizlesene : MainAPI() {
                 for ((key, value) in videoMap) {
                     val videoUrl = fixUrlNull(value) ?: continue
                     if (videoUrl.contains("turbo.imgz.me")) {
-                        loadExtractor("${key}||${videoUrl}", "${mainUrl}/", subtitleCallback, callback)
+                        loadExtractor("${key}||${videoUrl}", "${mainUrl}/", subtitleCallback, _callback)
                     } else {
-                        loadExtractor(videoUrl, "${mainUrl}/", subtitleCallback, callback)
+                        loadExtractor(videoUrl, "${mainUrl}/", subtitleCallback, _callback)
                     }
                 }
             }
 
-            return true
+            if (_linksFound == 0) throw Exception("Sayfada hiçbir link bulunamadı, site yapısı değişmiş olabilir.")
+        return true
         } catch (e: Exception) {
             android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                 ErrorUtils.showPluginError(FullHDFilmizlesenePlugin.appContext, this.name, "LOAD_LINKS", data)
