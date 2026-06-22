@@ -316,7 +316,7 @@ class KekikStream : MainAPI() {
                 
                 val extType = if (isM3u8) ExtractorLinkType.M3U8 else if (isDash) ExtractorLinkType.DASH else ExtractorLinkType.VIDEO
 
-                callback.invoke(
+                safeCallback.invoke(
                     ExtractorLink(
                         source = link.name ?: "WatchBuddy",
                         name = link.name ?: "WatchBuddy",

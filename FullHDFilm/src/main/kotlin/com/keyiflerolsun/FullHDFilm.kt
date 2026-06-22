@@ -259,7 +259,7 @@ class FullHDFilm : MainAPI() {
                         
                         if (securedLink != null && securedLink.isNotBlank()) {
                             Log.d("FHDF", "Found M3U8: $securedLink")
-                            callback(newExtractorLink(
+                            safeCallback(newExtractorLink(
                                 sourceName,
                                 sourceName,
                                 securedLink,
@@ -271,7 +271,7 @@ class FullHDFilm : MainAPI() {
                         }
                     } else if (iframeSrc.isNotEmpty()) {
                         // Diğer extractors (vidmoly vb.)
-                        if (loadExtractor(iframeSrc, data, subtitleCallback, callback)) {
+                        if (loadExtractor(iframeSrc, data, subtitleCallback, safeCallback)) {
                             foundLinks = true
                         }
                     }

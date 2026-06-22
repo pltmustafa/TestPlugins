@@ -386,7 +386,7 @@ override suspend fun loadLinks(
                     iframe = fixUrlNull(iframeDoc.selectFirst("iframe")?.attr("data-src")) ?: return@forEach
                 }
                 Log.d("HDCH_Extractor", "Found iframe: $iframe for source: $source")
-                invokeLocalSource(source, iframe, subtitleCallback, callback)
+                invokeLocalSource(source, iframe, subtitleCallback, safeCallback)
             }
         }
         

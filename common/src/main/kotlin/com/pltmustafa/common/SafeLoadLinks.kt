@@ -12,8 +12,8 @@ suspend fun safeLoadLinks(
     block: suspend (safeCallback: (ExtractorLink) -> Unit) -> Unit
 ): Boolean {
     Log.d("SafeLoadLinks", "[$pluginName] safeLoadLinks started for data: $data")
+    var linksFound = 0
     try {
-        var linksFound = 0
         val safeCallback: (ExtractorLink) -> Unit = { link ->
             Log.d("SafeLoadLinks", "[$pluginName] Found link: ${link.url}")
             if (link.url.isNotBlank()) {
@@ -33,6 +33,12 @@ suspend fun safeLoadLinks(
         if (e.javaClass.simpleName.contains("CancellationException")) throw e
         
         Log.e("SafeLoadLinks", "[$pluginName] Exception caught: ${e.message}", e)
+        
+        if (linksFound > 0) {
+            Log.d("SafeLoadLinks", "[$pluginName] Exception caught but $linksFound links were already found. Returning true gracefully.")
+            return true
+        }
+
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
             Log.d("SafeLoadLinks", "[$pluginName] Triggering ErrorUtils.showPluginError")
             try {

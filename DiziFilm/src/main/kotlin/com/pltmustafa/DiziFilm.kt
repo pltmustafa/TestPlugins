@@ -258,7 +258,7 @@ class DiziFilm : MainAPI() {
                                     vidlopUrls.add(url to "Vidlop Server ${index + 1}")
                                 } else {
                                     Log.d("DiziFilm", "Found other URL for episode: $url")
-                                    loadExtractor(url, "$mainUrl/", subtitleCallback, callback)
+                                    loadExtractor(url, "$mainUrl/", subtitleCallback, safeCallback)
                                 }
                             }
                     } catch(e: Exception) {
@@ -309,7 +309,7 @@ class DiziFilm : MainAPI() {
                     
                     if (m3u8Url != null) {
                         Log.e("DiziFilm", "Found m3u8 URL: $m3u8Url")
-                        callback.invoke(
+                        safeCallback.invoke(
                             newExtractorLink(
                                 source = sourceName,
                                 name = sourceName,
