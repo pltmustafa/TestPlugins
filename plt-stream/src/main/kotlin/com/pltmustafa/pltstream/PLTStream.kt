@@ -143,9 +143,30 @@ class PLTStream : MainAPI() {
         }
         Log.d("plt-stream", "TMDB API URL: $detailsUrl")
 
-        val tags = item.genres?.mapNotNull { it.name }
         val duration = item.runtime ?: item.episode_run_time?.firstOrNull()
         val scoreObj = item.vote_average?.toString()?.let { Score.from10(it) }
+        
+        val statusStr = item.status
+        android.util.Log.d("plt-stream", "TMDB Status for $title: '$statusStr'")
+        val statusTranslated = when (statusStr?.lowercase()) {
+            "returning series", "ongoing" -> "Devam Ediyor"
+            "ended", "canceled", "released" -> "Tamamlandı"
+            "rumored", "planned", "in production", "post production", "pilot", "upcoming" -> "Yakında"
+            else -> statusStr
+        }
+        val tags = item.genres?.mapNotNull { it.name }?.toMutableList() ?: mutableListOf()
+        if (statusTranslated != null) {
+            tags.add(0, statusTranslated)
+        }
+        
+        val showStatus = when (statusStr?.lowercase()) {
+            "returning series", "ongoing" -> ShowStatus.Ongoing
+            "ended", "canceled", "released" -> ShowStatus.Completed
+            else -> null
+        }
+        val isComingSoon = statusStr?.lowercase() in listOf("rumored", "planned", "in production", "post production", "pilot", "upcoming")
+        
+        val plotWithStatus = if (statusTranslated != null) "Durum: $statusTranslated\n\n$plot" else plot
 
         val recs = item.recommendations?.results?.mapNotNull { rec ->
             val recTitle = rec.title ?: rec.name ?: return@mapNotNull null
@@ -170,29 +191,58 @@ class PLTStream : MainAPI() {
                 this.posterUrl = poster
                 this.backgroundPosterUrl = background
                 this.year = year
-                this.plot = plot
+                this.plot = plotWithStatus
                 this.tags = tags
                 this.duration = duration
                 this.score = scoreObj
+                this.comingSoon = isComingSoon
                 this.recommendations = recs
                 if (!actors.isNullOrEmpty()) addActors(actors)
             }
         } else {
-            val defaultNameRegex = Regex("^(?:\\d+\\.\\s*Bölüm|Bölüm\\s*\\d+|Episode\\s*\\d+)$", RegexOption.IGNORE_CASE)
             val episodes = item.seasons?.filter { it.season_number != null && it.season_number > 0 }
                 ?.amap { season ->
-                    val seasonUrl = "$mainUrl/tv/${meta.id}/season/${season.season_number}?api_key=$apiKey&language=tr-TR"
-                    val seasonResponse = app.get(seasonUrl).text
-                    val seasonData = parseJson<TmdbSeasonDetails>(seasonResponse)
+                    val seasonUrlTr = "$mainUrl/tv/${meta.id}/season/${season.season_number}?api_key=$apiKey&language=tr-TR"
+                    val seasonUrlEn = "$mainUrl/tv/${meta.id}/season/${season.season_number}?api_key=$apiKey&language=en-US"
+                    
+                    var trResponse = ""
+                    var enResponse = ""
+                    kotlinx.coroutines.coroutineScope {
+                        val trDef = async { app.get(seasonUrlTr).text }
+                        val enDef = async { app.get(seasonUrlEn).text }
+                        trResponse = trDef.await()
+                        enResponse = enDef.await()
+                    }
+                    
+                    val seasonDataTr = parseJson<TmdbSeasonDetails>(trResponse)
+                    val seasonDataEn = parseJson<TmdbSeasonDetails>(enResponse)
 
-                    seasonData.episodes?.map { ep ->
-                        val loadData = LoadData(meta.id, meta.type, imdbId, title, year, season.season_number, ep.episode_number ?: 1).toJson()
+                    seasonDataTr.episodes?.mapIndexed { index, epTr ->
+                        val epEn = seasonDataEn.episodes?.getOrNull(index)
+                        
+                        val defaultNameRegex = Regex("^(?:(?:\\d+\\.\\s*)*Bölüm(?:\\s*\\d+)?|(?:\\d+\\.\\s*)*Episode(?:\\s*\\d+)?)$", RegexOption.IGNORE_CASE)
+                        val trNameIsGeneric = epTr.name != null && epTr.name.matches(defaultNameRegex)
+                        val enNameIsGeneric = epEn?.name != null && epEn.name.matches(defaultNameRegex)
+                                var finalName = if (trNameIsGeneric || epTr.name.isNullOrBlank()) {
+                            if (enNameIsGeneric) "Bölüm" else epEn?.name ?: "Bölüm"
+                        } else {
+                            epTr.name
+                        }
+                        
+                        val prefixRegex = Regex("^(?:\\d+\\.\\s*)+")
+                        if (finalName != null) {
+                            finalName = finalName.replace(prefixRegex, "").trim()
+                        }
+                        
+                        val finalOverview = if (epTr.overview.isNullOrBlank()) epEn?.overview else epTr.overview
+
+                        val loadData = LoadData(meta.id, meta.type, imdbId, title, year, season.season_number, epTr.episode_number ?: 1).toJson()
                         newEpisode(loadData) {
-                            this.name = if (ep.name != null && ep.name.matches(defaultNameRegex)) null else ep.name
+                            this.name = finalName
                             this.season = season.season_number
-                            this.episode = ep.episode_number
-                            this.posterUrl = if (ep.still_path != null) "$imageBaseUrl${ep.still_path}" else null
-                            this.description = ep.overview
+                            this.episode = epTr.episode_number
+                            this.posterUrl = if (epTr.still_path != null) "$imageBaseUrl${epTr.still_path}" else if (epEn?.still_path != null) "$imageBaseUrl${epEn.still_path}" else null
+                            this.description = finalOverview
                         }
                     } ?: emptyList()
                 }?.flatten() ?: emptyList()
@@ -201,10 +251,12 @@ class PLTStream : MainAPI() {
                 this.posterUrl = poster
                 this.backgroundPosterUrl = background
                 this.year = year
-                this.plot = plot
+                this.plot = plotWithStatus
                 this.tags = tags
                 this.duration = duration
                 this.score = scoreObj
+                this.comingSoon = isComingSoon
+                this.showStatus = showStatus
                 this.recommendations = recs
                 if (!actors.isNullOrEmpty()) addActors(actors)
             }
@@ -291,7 +343,8 @@ class PLTStream : MainAPI() {
         val genres: List<TmdbGenre>?,
         val runtime: Int?,
         val episode_run_time: List<Int>?,
-        val recommendations: TmdbRecommendations?
+        val recommendations: TmdbRecommendations?,
+        val status: String?
     )
 
     data class TmdbGenre(
