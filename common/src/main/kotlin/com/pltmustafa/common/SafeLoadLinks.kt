@@ -30,6 +30,8 @@ suspend fun safeLoadLinks(
         }
         return true
     } catch (e: Exception) {
+        if (e.javaClass.simpleName.contains("CancellationException")) throw e
+        
         Log.e("SafeLoadLinks", "[$pluginName] Exception caught: ${e.message}", e)
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
             Log.d("SafeLoadLinks", "[$pluginName] Triggering ErrorUtils.showPluginError")

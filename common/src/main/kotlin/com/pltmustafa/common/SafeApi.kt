@@ -16,6 +16,8 @@ inline suspend fun safeGetMainPage(
         Log.d("SafeApi", "[$pluginName] safeGetMainPage started for url: $data")
         return block()
     } catch (e: Exception) {
+        if (e.javaClass.simpleName.contains("CancellationException")) throw e
+        
         Log.e("SafeApi", "[$pluginName] safeGetMainPage error: ${e.message}", e)
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
             try {
@@ -38,6 +40,8 @@ inline suspend fun safeLoad(
         Log.d("SafeApi", "[$pluginName] safeLoad started for url: $data")
         return block()
     } catch (e: Exception) {
+        if (e.javaClass.simpleName.contains("CancellationException")) throw e
+        
         Log.e("SafeApi", "[$pluginName] safeLoad error: ${e.message}", e)
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
             try {
