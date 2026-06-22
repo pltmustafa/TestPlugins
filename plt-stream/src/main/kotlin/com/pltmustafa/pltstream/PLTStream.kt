@@ -154,10 +154,7 @@ class PLTStream : MainAPI() {
             "rumored", "planned", "in production", "post production", "pilot", "upcoming" -> "Yakında"
             else -> statusStr
         }
-        val tags = item.genres?.mapNotNull { it.name }?.toMutableList() ?: mutableListOf()
-        if (statusTranslated != null) {
-            tags.add(0, statusTranslated)
-        }
+        val tags = item.genres?.mapNotNull { it.name }
         
         val showStatus = when (statusStr?.lowercase()) {
             "returning series", "ongoing" -> ShowStatus.Ongoing
@@ -166,7 +163,7 @@ class PLTStream : MainAPI() {
         }
         val isComingSoon = statusStr?.lowercase() in listOf("rumored", "planned", "in production", "post production", "pilot", "upcoming")
         
-        val plotWithStatus = if (statusTranslated != null) "Durum: $statusTranslated\n\n$plot" else plot
+        val plotWithStatus = if (statusTranslated != null && !plot.isNullOrBlank()) "Durum: $statusTranslated\n\n$plot" else plot
 
         val recs = item.recommendations?.results?.mapNotNull { rec ->
             val recTitle = rec.title ?: rec.name ?: return@mapNotNull null
