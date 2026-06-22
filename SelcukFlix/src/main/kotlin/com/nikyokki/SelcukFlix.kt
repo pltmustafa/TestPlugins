@@ -2,6 +2,8 @@ package com.nikyokki
 
 import com.pltmustafa.common.ErrorUtils
 import com.pltmustafa.common.safeLoadLinks
+import com.pltmustafa.common.safeGetMainPage
+import com.pltmustafa.common.safeLoad
 import android.util.Log
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -80,8 +82,8 @@ class SelcukFlix : MainAPI() {
         "11" to "Western Dizi",
     )
 
-    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        try {
+    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
+        return safeGetMainPage(SelcukFlixPlugin.appContext, this.name, request.data) {
             val yil = Calendar.getInstance().get(Calendar.YEAR)
             var url =
                 "$mainUrl/api/bg/findMovies?releaseYearStart=1900&releaseYearEnd=$yil&imdbPointMin=1&imdbPointMax=10&categoryIdsComma=KATID&countryIdsComma=&orderType=date_desc&languageId=-1&currentPage=${page}&currentPageCount=12&queryStr=&categorySlugsComma=&countryCodesComma="
@@ -111,9 +113,6 @@ class SelcukFlix : MainAPI() {
             val listItems: ListItems = objectMapper.readValue(converted)
             val home = listItems.result.map { it.toMainPageResult() }
             return newHomePageResponse(request.name, home)
-        } catch (e: Exception) {
-            ErrorUtils.showPluginError(SelcukFlixPlugin.appContext, this.name, "MAIN_PAGE", mainUrl)
-            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 
@@ -229,8 +228,8 @@ class SelcukFlix : MainAPI() {
 
     override suspend fun quickSearch(query: String): List<SearchResponse> = search(query)
 
-    override suspend fun load(url: String): LoadResponse {
-        try {
+    override suspend fun load(url: String): LoadResponse? {
+        return safeLoad(SelcukFlixPlugin.appContext, this.name, url) {
             val objectMapper = ObjectMapper().registerModule(KotlinModule.Builder().build())
             objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
             val encodedDoc = app.get(url).document
@@ -319,9 +318,6 @@ class SelcukFlix : MainAPI() {
                 addActors(actors)
                 addTrailer(trailer)
             }
-        } catch (e: Exception) {
-            ErrorUtils.showPluginError(SelcukFlixPlugin.appContext, this.name, "LOAD_DETAILS", url)
-            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 

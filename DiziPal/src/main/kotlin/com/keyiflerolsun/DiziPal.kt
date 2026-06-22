@@ -4,6 +4,8 @@ package com.keyiflerolsun
 
 import com.pltmustafa.common.ErrorUtils
 import com.pltmustafa.common.safeLoadLinks
+import com.pltmustafa.common.safeGetMainPage
+import com.pltmustafa.common.safeLoad
 import android.util.Log
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
@@ -103,8 +105,8 @@ class DiziPal : MainAPI() {
         // "${mainUrl}/diziler?kelime=&durum=&tur=21&type=&siralama=" to "Western",
     )
 
-    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        try {
+    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
+        return safeGetMainPage(DiziPalPlugin.appContext, this.name, request.data) {
             val document = app.get(
                 request.data, timeout = 10000, interceptor = interceptor, headers = getHeaders(mainUrl)
             ).document
@@ -116,9 +118,6 @@ class DiziPal : MainAPI() {
             }
 
             return newHomePageResponse(request.name, home, hasNext=true)
-        } catch (e: Exception) {
-            ErrorUtils.showPluginError(DiziPalPlugin.appContext, this.name, "MAIN_PAGE", mainUrl)
-            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 
@@ -193,7 +192,7 @@ class DiziPal : MainAPI() {
     override suspend fun quickSearch(query: String): List<SearchResponse> = search(query)
 
     override suspend fun load(url: String): LoadResponse? {
-        try {
+        return safeLoad(DiziPalPlugin.appContext, this.name, url) {
             val document = app.get(url, interceptor = interceptor, headers = getHeaders(mainUrl)).document
 
             val poster      = document.selectFirst("div.page-top img[alt]")?.attr("src")
@@ -245,9 +244,6 @@ class DiziPal : MainAPI() {
                     this.duration  = duration
                 }
             }
-        } catch (e: Exception) {
-            ErrorUtils.showPluginError(DiziPalPlugin.appContext, this.name, "LOAD_DETAILS", url)
-            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 

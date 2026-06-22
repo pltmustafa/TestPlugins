@@ -4,6 +4,8 @@ package com.keyiflerolsun
 
 import com.pltmustafa.common.ErrorUtils
 import com.pltmustafa.common.safeLoadLinks
+import com.pltmustafa.common.safeGetMainPage
+import com.pltmustafa.common.safeLoad
 import android.util.Log
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.databind.DeserializationFeature
@@ -92,8 +94,8 @@ class HDFilmCehennemi : MainAPI() {
         "${mainUrl}/load/page/sayfano/genres/romantik-filmleri-izle-2/"            to "Romantik Filmleri"
     )
 
-    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        try {
+    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
+        return safeGetMainPage(HDFilmCehennemiPlugin.appContext, this.name, request.data) {
             val objectMapper = ObjectMapper().registerModule(KotlinModule.Builder().build())
             objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
             val url = request.data.replace("sayfano", page.toString())
@@ -116,9 +118,6 @@ class HDFilmCehennemi : MainAPI() {
                 }
             }
             return newHomePageResponse(request.name, emptyList())
-        } catch (e: Exception) {
-            ErrorUtils.showPluginError(HDFilmCehennemiPlugin.appContext, this.name, "MAIN_PAGE", mainUrl)
-            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 
@@ -155,7 +154,7 @@ class HDFilmCehennemi : MainAPI() {
     }
 
     override suspend fun load(url: String): LoadResponse? {
-        try {
+        return safeLoad(HDFilmCehennemiPlugin.appContext, this.name, url) {
             val document = app.get(url, interceptor = interceptor).document
 
             val title       = document.selectFirst("h1.section-title")?.text()?.substringBefore(" izle") ?: return null
@@ -214,9 +213,6 @@ class HDFilmCehennemi : MainAPI() {
                     addTrailer(trailer)
                 }
             }
-        } catch (e: Exception) {
-            ErrorUtils.showPluginError(HDFilmCehennemiPlugin.appContext, this.name, "LOAD_DETAILS", url)
-            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 

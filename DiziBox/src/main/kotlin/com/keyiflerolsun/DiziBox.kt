@@ -4,6 +4,8 @@ package com.keyiflerolsun
 
 import com.pltmustafa.common.ErrorUtils
 import com.pltmustafa.common.safeLoadLinks
+import com.pltmustafa.common.safeGetMainPage
+import com.pltmustafa.common.safeLoad
 import android.util.Base64
 import android.util.Log
 import org.jsoup.nodes.Element
@@ -77,8 +79,8 @@ class DiziBox : MainAPI() {
         "${mainUrl}/tur/yarisma/page/SAYFA"    to "Yarışma"
     )
 
-    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        try {
+    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
+        return safeGetMainPage(DiziBoxPlugin.appContext, this.name, request.data) {
             val url      = request.data.replace("SAYFA", "$page")
             val document = app.get(
                 url,
@@ -97,9 +99,6 @@ class DiziBox : MainAPI() {
             it.toMainPageResult()
         }
             return newHomePageResponse(request.name, home)
-        } catch (e: Exception) {
-            ErrorUtils.showPluginError(DiziBoxPlugin.appContext, this.name, "MAIN_PAGE", mainUrl)
-            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 
@@ -132,7 +131,7 @@ private fun Element.toMainPageResult(): SearchResponse? {
     override suspend fun quickSearch(query: String): List<SearchResponse> = search(query)
 
     override suspend fun load(url: String): LoadResponse? {
-        try {
+        return safeLoad(DiziBoxPlugin.appContext, this.name, url) {
             val document = app.get(
                 url,
                 cookies     = mapOf(
@@ -186,9 +185,6 @@ private fun Element.toMainPageResult(): SearchResponse? {
                 addActors(actors)
                 addTrailer(trailer)
             }
-        } catch (e: Exception) {
-            ErrorUtils.showPluginError(DiziBoxPlugin.appContext, this.name, "LOAD_DETAILS", url)
-            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 

@@ -4,6 +4,8 @@ package com.keyiflerolsun
 
 import com.pltmustafa.common.ErrorUtils
 import com.pltmustafa.common.safeLoadLinks
+import com.pltmustafa.common.safeGetMainPage
+import com.pltmustafa.common.safeLoad
 import android.util.Log
 import org.jsoup.nodes.Element
 import com.lagradost.cloudstream3.*
@@ -55,8 +57,8 @@ class DiziMom : MainAPI() {
         // "${mainUrl}/full-hd-hint-dizileri-izle/page/" to "Hint Dizileri",
     )
 
-    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        try {
+    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
+        return safeGetMainPage(DiziMomPlugin.appContext, this.name, request.data) {
             val document = app.get("${request.data}${page}/", interceptor = interceptor).document
             val home     = if (request.data.contains("/tum-bolumler/")) {
                 document.select("div.episode-box").mapNotNull { it.sonBolumler() } 
@@ -65,9 +67,6 @@ class DiziMom : MainAPI() {
             }
 
             return newHomePageResponse(request.name, home)
-        } catch (e: Exception) {
-            ErrorUtils.showPluginError(DiziMomPlugin.appContext, this.name, "MAIN_PAGE", mainUrl)
-            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 
@@ -101,7 +100,7 @@ class DiziMom : MainAPI() {
     override suspend fun quickSearch(query: String): List<SearchResponse> = search(query)
 
     override suspend fun load(url: String): LoadResponse? {
-        try {
+        return safeLoad(DiziMomPlugin.appContext, this.name, url) {
             val document = app.get(url, interceptor = interceptor).document
 
             val title       = document.selectFirst("div.title h1")?.text()?.substringBefore(" izle") ?: return null
@@ -133,9 +132,6 @@ class DiziMom : MainAPI() {
                 this.tags      = tags
                 addActors(actors)
             }
-        } catch (e: Exception) {
-            ErrorUtils.showPluginError(DiziMomPlugin.appContext, this.name, "LOAD_DETAILS", url)
-            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 

@@ -2,6 +2,8 @@ package com.pltmustafa
 
 import com.pltmustafa.common.ErrorUtils
 import com.pltmustafa.common.safeLoadLinks
+import com.pltmustafa.common.safeGetMainPage
+import com.pltmustafa.common.safeLoad
 import android.util.Log
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -56,8 +58,8 @@ class DiziFilm : MainAPI() {
     override suspend fun getMainPage(
         page: Int,
         request: MainPageRequest
-    ): HomePageResponse {
-        try {
+    ): HomePageResponse? {
+        return safeGetMainPage(DiziFilmPlugin.appContext, this.name, request.data) {
             val url = "$mainUrl${request.data}$page"
             val response = app.get(url).text
             val parsed = mapper.readValue<MoviesApiResponse>(response)
@@ -81,9 +83,6 @@ class DiziFilm : MainAPI() {
             }
 
             return newHomePageResponse(request.name, homeItems, hasNext = (parsed.totalPages ?: 1) > page)
-        } catch (e: Exception) {
-            ErrorUtils.showPluginError(DiziFilmPlugin.appContext, this.name, "MAIN_PAGE", mainUrl)
-            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 
@@ -135,7 +134,7 @@ class DiziFilm : MainAPI() {
     }
 
     override suspend fun load(url: String): LoadResponse? {
-        try {
+        return safeLoad(DiziFilmPlugin.appContext, this.name, url) {
             Log.d("DiziFilm", "load called with url: $url")
             val html = app.get(url).text
             Log.d("DiziFilm", "load html length: ${html.length}")
@@ -205,9 +204,6 @@ class DiziFilm : MainAPI() {
                     }
                 }
             }
-        } catch (e: Exception) {
-            ErrorUtils.showPluginError(DiziFilmPlugin.appContext, this.name, "LOAD_DETAILS", url)
-            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 

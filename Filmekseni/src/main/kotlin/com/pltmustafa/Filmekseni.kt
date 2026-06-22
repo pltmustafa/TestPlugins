@@ -2,6 +2,8 @@ package com.pltmustafa
 
 import com.pltmustafa.common.ErrorUtils
 import com.pltmustafa.common.safeLoadLinks
+import com.pltmustafa.common.safeGetMainPage
+import com.pltmustafa.common.safeLoad
 import android.util.Base64
 import android.util.Log
 import com.lagradost.cloudstream3.*
@@ -43,8 +45,8 @@ class Filmekseni : MainAPI() {
         "$mainUrl/diziler/" to "Diziler"
     )
 
-    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        try {
+    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
+        return safeGetMainPage(FilmekseniPlugin.appContext, this.name, request.data) {
             val url = if (page == 1) request.data else "${request.data}?page=$page"
             val document = app.get(url).document
             
@@ -53,9 +55,6 @@ class Filmekseni : MainAPI() {
             }
             
             return newHomePageResponse(request.name, home)
-        } catch (e: Exception) {
-            ErrorUtils.showPluginError(FilmekseniPlugin.appContext, this.name, "MAIN_PAGE", mainUrl)
-            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 
@@ -98,7 +97,7 @@ class Filmekseni : MainAPI() {
     }
 
     override suspend fun load(url: String): LoadResponse? {
-        try {
+        return safeLoad(FilmekseniPlugin.appContext, this.name, url) {
             val document = app.get(url).document
             val title = document.selectFirst("h1")?.text()?.trim() ?: throw Exception("Başlık bulunamadı")
             val poster = fixUrlNull(document.selectFirst("div.aspect-\\[2\\/3\\] img")?.attr("src") ?: document.selectFirst("img[alt='$title']")?.attr("src"))
@@ -180,9 +179,6 @@ class Filmekseni : MainAPI() {
                     addActors(actorsList)
                 }
             }
-        } catch (e: Exception) {
-            ErrorUtils.showPluginError(FilmekseniPlugin.appContext, this.name, "LOAD_DETAILS", url)
-            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 

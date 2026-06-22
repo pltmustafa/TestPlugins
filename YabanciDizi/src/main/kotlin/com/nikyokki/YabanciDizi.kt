@@ -2,6 +2,8 @@ package com.nikyokki
 
 import com.pltmustafa.common.ErrorUtils
 import com.pltmustafa.common.safeLoadLinks
+import com.pltmustafa.common.safeGetMainPage
+import com.pltmustafa.common.safeLoad
 import CryptoJS
 import android.util.Log
 import com.lagradost.cloudstream3.Actor
@@ -91,15 +93,12 @@ class YabanciDizi : MainAPI() {
         "${mainUrl}/dizi/tur/stand-up" to "Stand Up",
     )
 
-    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        try {
+    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
+        return safeGetMainPage(YabanciDiziPlugin.appContext, this.name, request.data) {
             val document = app.get("${request.data}/${page}").document
             val home = document.select("div.mofy-movbox").mapNotNull { it.toSearchResult() }
 
             return newHomePageResponse(request.name, home)
-        } catch (e: Exception) {
-            ErrorUtils.showPluginError(YabanciDiziPlugin.appContext, this.name, "MAIN_PAGE", mainUrl)
-            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 
@@ -153,8 +152,8 @@ class YabanciDizi : MainAPI() {
 
     override suspend fun quickSearch(query: String): List<SearchResponse> = search(query)
 
-    override suspend fun load(url: String): LoadResponse {
-        try {
+    override suspend fun load(url: String): LoadResponse? {
+        return safeLoad(YabanciDiziPlugin.appContext, this.name, url) {
             val headers = mapOf(
                 "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
                 "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
@@ -223,9 +222,6 @@ class YabanciDizi : MainAPI() {
                     addTrailer("https://www.youtube.com/embed/${trailer}")
                 }
             }
-        } catch (e: Exception) {
-            ErrorUtils.showPluginError(YabanciDiziPlugin.appContext, this.name, "LOAD_DETAILS", url)
-            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 

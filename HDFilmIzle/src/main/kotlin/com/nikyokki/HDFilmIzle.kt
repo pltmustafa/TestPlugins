@@ -2,6 +2,8 @@ package com.nikyokki
 
 import com.pltmustafa.common.ErrorUtils
 import com.pltmustafa.common.safeLoadLinks
+import com.pltmustafa.common.safeGetMainPage
+import com.pltmustafa.common.safeLoad
 import Video
 import android.util.Log
 import com.fasterxml.jackson.annotation.JsonProperty
@@ -65,8 +67,8 @@ class HDFilmIzle : MainAPI() {
         "${mainUrl}/yabanci-dizi-izle-2/" to "Yabancı Diziler",
     )
 
-    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        try {
+    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
+        return safeGetMainPage(HDFilmIzlePlugin.appContext, this.name, request.data) {
             val url = if (page == 1) request.data else "${request.data}page/$page/"
             val document = app.get(url).document
 
@@ -75,9 +77,6 @@ class HDFilmIzle : MainAPI() {
             home = document.select("div#moviesListResult a.poster").mapNotNull { it.toSearchResult() }
 
             return newHomePageResponse(request.name, home, hasNext = true)
-        } catch (e: Exception) {
-            ErrorUtils.showPluginError(HDFilmIzlePlugin.appContext, this.name, "MAIN_PAGE", mainUrl)
-            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 
@@ -143,7 +142,7 @@ class HDFilmIzle : MainAPI() {
     }
 
     override suspend fun load(url: String): LoadResponse? {
-        try {
+        return safeLoad(HDFilmIzlePlugin.appContext, this.name, url) {
             val document = app.get(url).document
 
             val orgTitle = document.selectFirst("div.page-title h1")?.text() ?: ""
@@ -220,9 +219,6 @@ class HDFilmIzle : MainAPI() {
                 addActors(actors)
                 addTrailer(trailer)
             }
-        } catch (e: Exception) {
-            ErrorUtils.showPluginError(HDFilmIzlePlugin.appContext, this.name, "LOAD_DETAILS", url)
-            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 

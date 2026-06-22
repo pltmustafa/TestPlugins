@@ -4,6 +4,8 @@ package com.keyiflerolsun
 
 import com.pltmustafa.common.ErrorUtils
 import com.pltmustafa.common.safeLoadLinks
+import com.pltmustafa.common.safeGetMainPage
+import com.pltmustafa.common.safeLoad
 import android.util.Log
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
@@ -92,16 +94,13 @@ class WebteIzle : MainAPI() {
         "${mainUrl}/filtre/SAYFA?tur=Western"     to "Western"
     )
 
-    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        try {
+    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
+        return safeGetMainPage(WebteIzlePlugin.appContext, this.name, request.data) {
             val url = if ("SAYFA" in request.data) request.data.replace("SAYFA", "$page") else "${request.data}$page"
             val document = app.get(url).document
             val home = document.select("div.golgever").mapNotNull { it.toSearchResult() }
 
             return newHomePageResponse(request.name, home)
-        } catch (e: Exception) {
-            ErrorUtils.showPluginError(WebteIzlePlugin.appContext, this.name, "MAIN_PAGE", mainUrl)
-            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 
@@ -129,7 +128,7 @@ class WebteIzle : MainAPI() {
     override suspend fun quickSearch(query: String): List<SearchResponse> = search(query)
 
     override suspend fun load(url: String): LoadResponse? {
-        try {
+        return safeLoad(WebteIzlePlugin.appContext, this.name, url) {
             val document = app.get(url).document
 
             val title = document.selectFirst("[property='og:title']")?.attr("content")?.substringBefore(" izle") ?: return null
@@ -152,9 +151,6 @@ class WebteIzle : MainAPI() {
                 addTrailer("https://www.youtube.com/embed/${trailer}")
                 addActors(actors)
             }
-        } catch (e: Exception) {
-            ErrorUtils.showPluginError(WebteIzlePlugin.appContext, this.name, "LOAD_DETAILS", url)
-            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 

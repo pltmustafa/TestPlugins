@@ -6,7 +6,7 @@ dependencies {
     val cloudstream by configurations
     cloudstream("com.lagradost:cloudstream3:pre-release")
 }
-version = 3
+version = 4
 
 cloudstream {
     description = "Cloud sync plugin for Cloudstream - syncs bookmarks, settings, extensions, watch history across devices"

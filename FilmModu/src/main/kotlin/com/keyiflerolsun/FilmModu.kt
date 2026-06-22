@@ -4,6 +4,8 @@ package com.keyiflerolsun
 
 import com.pltmustafa.common.ErrorUtils
 import com.pltmustafa.common.safeLoadLinks
+import com.pltmustafa.common.safeGetMainPage
+import com.pltmustafa.common.safeLoad
 import android.util.Log
 import org.jsoup.nodes.Element
 import com.lagradost.cloudstream3.*
@@ -50,15 +52,12 @@ class FilmModu : MainAPI() {
         "${mainUrl}/hd-film-kategori/vahsi-bati-filmleri"   to "Vahşi Batı",
     )
 
-    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        try {
+    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
+        return safeGetMainPage(FilmModuPlugin.appContext, this.name, request.data) {
             val document = app.get("${request.data}?page=${page}").document
             val home     = document.select("div.movie").mapNotNull { it.toMainPageResult() }
 
             return newHomePageResponse(request.name, home)
-        } catch (e: Exception) {
-            ErrorUtils.showPluginError(FilmModuPlugin.appContext, this.name, "MAIN_PAGE", mainUrl)
-            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 
@@ -79,7 +78,7 @@ class FilmModu : MainAPI() {
     override suspend fun quickSearch(query: String): List<SearchResponse> = search(query)
 
     override suspend fun load(url: String): LoadResponse? {
-        try {
+        return safeLoad(FilmModuPlugin.appContext, this.name, url) {
             val document = app.get(url).document
 
             val orgTitle    = document.selectFirst("div.titles h1")?.text()?.trim() ?: return null
@@ -100,9 +99,6 @@ class FilmModu : MainAPI() {
                 addActors(actors)
                 addTrailer(trailer)
             }
-        } catch (e: Exception) {
-            ErrorUtils.showPluginError(FilmModuPlugin.appContext, this.name, "LOAD_DETAILS", url)
-            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 

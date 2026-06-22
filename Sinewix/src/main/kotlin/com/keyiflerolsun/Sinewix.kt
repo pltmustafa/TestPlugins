@@ -2,6 +2,8 @@ package com.keyiflerolsun
 
 import com.pltmustafa.common.ErrorUtils
 import com.pltmustafa.common.safeLoadLinks
+import com.pltmustafa.common.safeGetMainPage
+import com.pltmustafa.common.safeLoad
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.AppUtils.parseJson
@@ -48,8 +50,8 @@ class Sinewix : MainAPI() {
         "$mainUrl/public/api/genres/mediaLibrary/show/16/movie/$apiToken" to "Animasyonlar"
     )
 
-    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        try {
+    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
+        return safeGetMainPage(SinewixPlugin.appContext, this.name, request.data) {
             val response = app.get("${request.data}?page=$page", headers = sineHeaders).text
             
             val items = if (request.name == "Yeni Bölümler") {
@@ -59,9 +61,6 @@ class Sinewix : MainAPI() {
             }
 
             return newHomePageResponse(request.name, items ?: emptyList())
-        } catch (e: Exception) {
-            ErrorUtils.showPluginError(SinewixPlugin.appContext, this.name, "MAIN_PAGE", mainUrl)
-            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 
@@ -72,7 +71,7 @@ class Sinewix : MainAPI() {
     }
 
     override suspend fun load(url: String): LoadResponse? {
-        try {
+        return safeLoad(SinewixPlugin.appContext, this.name, url) {
             val responseText = app.get(url, headers = sineHeaders).text
             val it = parseJson<SineWixIcerikler>(responseText)
             
@@ -108,9 +107,6 @@ class Sinewix : MainAPI() {
                     this.year = it.releaseDate?.split("-")?.firstOrNull()?.toIntOrNull()
                 }
             }
-        } catch (e: Exception) {
-            ErrorUtils.showPluginError(SinewixPlugin.appContext, this.name, "LOAD_DETAILS", url)
-            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 

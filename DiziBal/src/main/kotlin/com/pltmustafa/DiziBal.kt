@@ -2,6 +2,8 @@ package com.pltmustafa
 
 import com.pltmustafa.common.ErrorUtils
 import com.pltmustafa.common.safeLoadLinks
+import com.pltmustafa.common.safeGetMainPage
+import com.pltmustafa.common.safeLoad
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -43,16 +45,13 @@ class DiziBal : MainAPI() {
         "$apiUrl/series?network=puhutv&limit=20&page=" to "puhutv Dizileri"
     )
 
-    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        try {
+    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
+        return safeGetMainPage(DiziBalPlugin.appContext, this.name, request.data) {
             val url = request.data + page
             val response = app.get(url)
             val res = response.parsedSafe<WListResponse>() ?: return newHomePageResponse(emptyList())
             val items = res.data?.mapNotNull { it.toSearchResponse() } ?: emptyList()
             return newHomePageResponse(request.name, items, hasNext = (res.pagination?.page ?: 1) < (res.pagination?.totalPages ?: 1))
-        } catch (e: Exception) {
-            ErrorUtils.showPluginError(DiziBalPlugin.appContext, this.name, "MAIN_PAGE", mainUrl)
-            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 
@@ -95,7 +94,7 @@ class DiziBal : MainAPI() {
     }
 
     override suspend fun load(url: String): LoadResponse? {
-        try {
+        return safeLoad(DiziBalPlugin.appContext, this.name, url) {
             val parts = url.split("||")
             if (parts.size < 2) throw Exception("Bozuk URL")
             
@@ -161,9 +160,6 @@ class DiziBal : MainAPI() {
                     }
                 }
             }
-        } catch (e: Exception) {
-            ErrorUtils.showPluginError(DiziBalPlugin.appContext, this.name, "LOAD_DETAILS", url)
-            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 

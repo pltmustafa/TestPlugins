@@ -4,6 +4,8 @@ package com.keyiflerolsun
 
 import com.pltmustafa.common.ErrorUtils
 import com.pltmustafa.common.safeLoadLinks
+import com.pltmustafa.common.safeGetMainPage
+import com.pltmustafa.common.safeLoad
 import android.util.Log
 import org.jsoup.nodes.Element
 import com.lagradost.cloudstream3.*
@@ -29,15 +31,12 @@ class SezonlukDizi : MainAPI() {
         "${mainUrl}/diziler.asp?siralama_tipi=id&kat=6&s="    to "Belgeseller",
     )
 
-    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        try {
+    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
+        return safeGetMainPage(SezonlukDiziPlugin.appContext, this.name, request.data) {
             val document = app.get("${request.data}${page}").document
             val home     = document.select("div.afis a").mapNotNull { it.toSearchResult() }
 
             return newHomePageResponse(request.name, home)
-        } catch (e: Exception) {
-            ErrorUtils.showPluginError(SezonlukDiziPlugin.appContext, this.name, "MAIN_PAGE", mainUrl)
-            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 
@@ -75,7 +74,7 @@ class SezonlukDizi : MainAPI() {
     override suspend fun quickSearch(query: String): List<SearchResponse> = search(query)
 
     override suspend fun load(url: String): LoadResponse? {
-        try {
+        return safeLoad(SezonlukDiziPlugin.appContext, this.name, url) {
             val document = app.get(url).document
 
             val title       = document.selectFirst("div.header")?.text()?.trim() ?: return null
@@ -122,9 +121,6 @@ class SezonlukDizi : MainAPI() {
                 this.duration  = duration
                 addActors(actors)
             }
-        } catch (e: Exception) {
-            ErrorUtils.showPluginError(SezonlukDiziPlugin.appContext, this.name, "LOAD_DETAILS", url)
-            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 

@@ -4,6 +4,8 @@ package com.keyiflerolsun
 
 import com.pltmustafa.common.ErrorUtils
 import com.pltmustafa.common.safeLoadLinks
+import com.pltmustafa.common.safeGetMainPage
+import com.pltmustafa.common.safeLoad
 import android.util.Log
 import android.util.Base64
 import org.jsoup.nodes.Element
@@ -54,15 +56,12 @@ class FullHDFilmizlesene : MainAPI() {
         "${mainUrl}/filmizle/yerli-filmler-hd-izle/"            to "Yerli Filmler",
     )
 
-    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        try {
+    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
+        return safeGetMainPage(FullHDFilmizlesenePlugin.appContext, this.name, request.data) {
             val document = app.get("${request.data}${page}").document
             val home     = document.select("li.film").mapNotNull { it.toSearchResult() }
 
             return newHomePageResponse(request.name, home)
-        } catch (e: Exception) {
-            ErrorUtils.showPluginError(FullHDFilmizlesenePlugin.appContext, this.name, "MAIN_PAGE", mainUrl)
-            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 
@@ -83,7 +82,7 @@ class FullHDFilmizlesene : MainAPI() {
     override suspend fun quickSearch(query: String): List<SearchResponse> = search(query)
 
     override suspend fun load(url: String): LoadResponse? {
-        try {
+        return safeLoad(FullHDFilmizlesenePlugin.appContext, this.name, url) {
             val document = app.get(url).document
 
             val title           = document.selectFirst("div[class=izle-titles]")?.text()?.trim() ?: return null
@@ -117,9 +116,6 @@ class FullHDFilmizlesene : MainAPI() {
                 addActors(actors)
                 addTrailer(trailer)
             }
-        } catch (e: Exception) {
-            ErrorUtils.showPluginError(FullHDFilmizlesenePlugin.appContext, this.name, "LOAD_DETAILS", url)
-            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 

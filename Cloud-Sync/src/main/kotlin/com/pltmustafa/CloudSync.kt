@@ -17,7 +17,7 @@ class CloudSync(val plugin: CloudSyncPlugin) : MainAPI() {
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? = null
     override suspend fun search(query: String): List<SearchResponse> = emptyList()
-    override suspend fun load(url: String): LoadResponse {
+    override suspend fun load(url: String): LoadResponse? {
         return newMovieLoadResponse("Cloud-Sync", "", TvType.Others, "")
     }
 }

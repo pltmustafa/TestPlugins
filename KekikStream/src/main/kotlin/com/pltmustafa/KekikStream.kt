@@ -2,6 +2,8 @@ package com.pltmustafa
 
 import com.pltmustafa.common.ErrorUtils
 import com.pltmustafa.common.safeLoadLinks
+import com.pltmustafa.common.safeGetMainPage
+import com.pltmustafa.common.safeLoad
 import android.util.Log
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.databind.DeserializationFeature
@@ -102,7 +104,7 @@ class KekikStream : MainAPI() {
         }
     }
 
-    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
+    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
         val data = request.data
         if (data == "all") {
             return newHomePageResponse(emptyList())
@@ -115,7 +117,7 @@ class KekikStream : MainAPI() {
         val encodedUrl = parts[1]
         val encodedCategory = parts[2]
 
-        try {
+        return safeGetMainPage(KekikStreamPlugin.appContext, this.name, request.data) {
             val url = "$mainUrl/get_main_page?plugin=$pluginName&page=1&encoded_url=$encodedUrl&encoded_category=$encodedCategory"
             val req = asyncApp.get(url, headers = headers, timeout = 30000)
             
@@ -127,9 +129,6 @@ class KekikStream : MainAPI() {
 
             val homePageList = HomePageList(pluginName, items)
             return newHomePageResponse(listOf(homePageList), hasNext = false)
-        } catch (e: Exception) {
-            ErrorUtils.showPluginError(KekikStreamPlugin.appContext, this.name, "MAIN_PAGE", mainUrl)
-            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 
@@ -183,7 +182,7 @@ class KekikStream : MainAPI() {
     }
 
     override suspend fun load(url: String): LoadResponse? {
-        try {
+        return safeLoad(KekikStreamPlugin.appContext, this.name, url) {
             val queryPart = url.substringAfter("?", "")
             val queryParams = queryPart.split("&").associate { 
                 val parts = it.split("=")
@@ -258,9 +257,6 @@ class KekikStream : MainAPI() {
                     addActors(actorsList.map { Actor(it) })
                 }
             }
-        } catch (e: Exception) {
-            ErrorUtils.showPluginError(KekikStreamPlugin.appContext, this.name, "LOAD_DETAILS", url)
-            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 

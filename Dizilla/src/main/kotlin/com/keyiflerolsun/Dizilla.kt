@@ -4,11 +4,15 @@ package com.keyiflerolsun
 
 import com.pltmustafa.common.ErrorUtils
 import com.pltmustafa.common.safeLoadLinks
-import android.util.Base64
-import android.util.Log
+import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.KotlinModule
+import com.lagradost.cloudstream3.*
+import com.pltmustafa.common.safeGetMainPage
+import com.pltmustafa.common.safeLoad
+import android.util.Log
+import android.util.Base64
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.lagradost.cloudstream3.Actor
 import com.lagradost.cloudstream3.Episode
@@ -93,8 +97,8 @@ class Dizilla : MainAPI() {
         "${mainUrl}/api/bg/findSeries?releaseYearStart=1900&releaseYearEnd=2024&imdbPointMin=5&imdbPointMax=10&categoryIdsComma=7&countryIdsComma=&orderType=date_desc&languageId=-1&currentPage=1&currentPageCount=24&queryStr=&categorySlugsComma=&countryCodesComma=" to "Romantik",
     )
 
-    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        return try {
+    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
+        return safeGetMainPage(DizillaPlugin.appContext, this.name, request.data) {
             println("Dizilla DEBUG - getMainPage: ${request.data}, page: $page")
 
             if (request.data.contains("/arsiv")) {
@@ -257,11 +261,6 @@ class Dizilla : MainAPI() {
                 }
                 return newHomePageResponse(request.name, home)
             }
-        } catch (e: Exception) {
-            println("Dizilla DEBUG - getMainPage exception: ${e.message}")
-            e.printStackTrace()
-            ErrorUtils.showPluginError(DizillaPlugin.appContext, this.name, "MAIN_PAGE", mainUrl)
-            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 

@@ -4,6 +4,8 @@ package com.keyiflerolsun
 
 import com.pltmustafa.common.ErrorUtils
 import com.pltmustafa.common.safeLoadLinks
+import com.pltmustafa.common.safeGetMainPage
+import com.pltmustafa.common.safeLoad
 import android.util.Base64
 import android.util.Log
 import com.lagradost.cloudstream3.*
@@ -48,17 +50,14 @@ class FullHDFilm : MainAPI() {
         "${mainUrl}/category/western-filmleri-izle"       to "Western"
     )
 
-    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        try {
+    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
+        return safeGetMainPage(FullHDFilmPlugin.appContext, this.name, request.data) {
             val url = if (page == 1) request.data else "${request.data}/page/${page}"
             val document = app.get(url).document
             val movieBoxes = document.select("div.movie-poster")
             val home = movieBoxes.mapNotNull { it.toSearchResult() }
 
             return newHomePageResponse(request.name, home)
-        } catch (e: Exception) {
-            ErrorUtils.showPluginError(FullHDFilmPlugin.appContext, this.name, "MAIN_PAGE", mainUrl)
-            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 
@@ -79,7 +78,7 @@ class FullHDFilm : MainAPI() {
     override suspend fun quickSearch(query: String): List<SearchResponse> = search(query)
 
     override suspend fun load(url: String): LoadResponse? {
-        try {
+        return safeLoad(FullHDFilmPlugin.appContext, this.name, url) {
             val document = app.get(url).document
         
             val title       = document.selectFirst("h1")?.text() ?: return null
@@ -123,9 +122,6 @@ class FullHDFilm : MainAPI() {
                 this.tags = tags
                 this.actors = actors.map { ActorData(it) }
             }
-        } catch (e: Exception) {
-            ErrorUtils.showPluginError(FullHDFilmPlugin.appContext, this.name, "LOAD_DETAILS", url)
-            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 
