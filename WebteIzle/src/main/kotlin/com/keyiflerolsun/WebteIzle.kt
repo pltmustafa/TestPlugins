@@ -131,7 +131,7 @@ class WebteIzle : MainAPI() {
         return safeLoad(WebteIzlePlugin.appContext, this.name, url) {
             val document = app.get(url).document
 
-            val title = document.selectFirst("[property='og:title']")?.attr("content")?.substringBefore(" izle") ?: return null
+            val title = document.selectFirst("[property='og:title']")?.attr("content")?.substringBefore(" izle") ?: throw Exception("Site yapısı değişmiş veya koruma var")
             val poster = fixUrlNull(document.selectFirst("div.card img")?.attr("data-src"))
             val year = document.selectXpath("//td[contains(text(), 'Vizyon')]/following-sibling::td").text().trim().split(" ").last().toIntOrNull()
             val description = document.selectFirst("blockquote")?.text()?.trim()

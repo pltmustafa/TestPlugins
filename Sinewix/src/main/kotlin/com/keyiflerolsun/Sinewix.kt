@@ -75,7 +75,7 @@ class Sinewix : MainAPI() {
             val responseText = app.get(url, headers = sineHeaders).text
             val it = parseJson<SineWixIcerikler>(responseText)
             
-            val title = it.name ?: it.title ?: return null
+            val title = it.name ?: it.title ?: throw Exception("İçerik bulunamadı veya sunucu hatası: $responseText")
             val poster = it.posterPath ?: it.backdropPath ?: it.backdropPathTv ?: ""
             val type = if (url.contains("serie") || it.type == "serie") TvType.TvSeries 
                        else if (url.contains("anime") || it.type == "anime") TvType.Anime

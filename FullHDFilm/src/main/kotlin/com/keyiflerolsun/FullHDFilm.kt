@@ -81,7 +81,7 @@ class FullHDFilm : MainAPI() {
         return safeLoad(FullHDFilmPlugin.appContext, this.name, url) {
             val document = app.get(url).document
         
-            val title       = document.selectFirst("h1")?.text() ?: return null
+            val title       = document.selectFirst("h1")?.text() ?: throw Exception("Site yapısı değişmiş veya koruma var")
             val poster      = fixUrlNull(document.selectFirst("div.poster img")?.attr("src"))
             val description = document.selectFirst("div.film")?.text()?.trim() ?: document.selectFirst("meta[property='og:description']")?.attr("content")?.trim()
             val tags        = document.select("div.tur.info a").map { it.text() }

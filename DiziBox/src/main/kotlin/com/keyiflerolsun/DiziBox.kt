@@ -142,7 +142,7 @@ private fun Element.toMainPageResult(): SearchResponse? {
                 interceptor = interceptor
             ).document
 
-            val title       = document.selectFirst("div.tv-overview h1 a")?.text()?.trim() ?: return null
+            val title       = document.selectFirst("div.tv-overview h1 a")?.text()?.trim() ?: throw Exception("Site yapısı değişmiş veya koruma var")
             val poster      = fixUrlNull(document.selectFirst("div.tv-overview figure img")?.attr("src"))
             val description = document.selectFirst("div.tv-story p")?.text()?.trim()
             val year        = document.selectFirst("a[href*='/yil/']")?.text()?.trim()?.toIntOrNull()

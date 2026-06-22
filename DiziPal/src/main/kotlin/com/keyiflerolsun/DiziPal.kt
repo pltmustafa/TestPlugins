@@ -203,7 +203,7 @@ class DiziPal : MainAPI() {
             val duration    = Regex("(\\d+)").find(document.selectXpath("//div[text()='Süre']//following-sibling::div").text())?.value?.toIntOrNull()
 
             if (url.contains("/series/")) {
-                val title       = document.selectFirst("div.flex h2")?.text() ?: return null
+                val title       = document.selectFirst("div.flex h2")?.text() ?: throw Exception("Site yapısı değişmiş veya koruma var")
                 val episodeElements = document.select("div.relative.w-full.flex.items-start.gap-4")
                 val episodes = episodeElements.mapNotNull { element ->
                     // 1. Link ve İsim Bilgisi

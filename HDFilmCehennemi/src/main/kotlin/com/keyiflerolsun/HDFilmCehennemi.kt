@@ -157,7 +157,7 @@ class HDFilmCehennemi : MainAPI() {
         return safeLoad(HDFilmCehennemiPlugin.appContext, this.name, url) {
             val document = app.get(url, interceptor = interceptor).document
 
-            val title       = document.selectFirst("h1.section-title")?.text()?.substringBefore(" izle") ?: return null
+            val title       = document.selectFirst("h1.section-title")?.text()?.substringBefore(" izle") ?: throw Exception("Site yapısı değişmiş veya koruma var")
             val poster      = fixUrlNull(document.select("aside.post-info-poster img.lazyload").lastOrNull()?.attr("data-src"))
             val tags        = document.select("div.post-info-genres a").map { it.text() }
             val year        = document.selectFirst("div.post-info-year-country a")?.text()?.trim()?.toIntOrNull()

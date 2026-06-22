@@ -77,8 +77,8 @@ class SezonlukDizi : MainAPI() {
         return safeLoad(SezonlukDiziPlugin.appContext, this.name, url) {
             val document = app.get(url).document
 
-            val title       = document.selectFirst("div.header")?.text()?.trim() ?: return null
-            val poster      = fixUrlNull(document.selectFirst("div.image img")?.attr("data-src")) ?: return null
+            val title       = document.selectFirst("div.header")?.text()?.trim() ?: throw Exception("Site yapısı değişmiş veya koruma var")
+            val poster      = fixUrlNull(document.selectFirst("div.image img")?.attr("data-src")) ?: ""
             val year        = document.selectFirst("div.extra span")?.text()?.trim()?.split("-")?.first()?.toIntOrNull()
             val description = document.selectFirst("span#tartismayorum-konu")?.text()?.trim()
             val tags        = document.select("div.labels a[href*='tur']").mapNotNull { it.text().trim() }

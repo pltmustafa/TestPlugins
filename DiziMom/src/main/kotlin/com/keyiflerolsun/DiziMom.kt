@@ -103,8 +103,8 @@ class DiziMom : MainAPI() {
         return safeLoad(DiziMomPlugin.appContext, this.name, url) {
             val document = app.get(url, interceptor = interceptor).document
 
-            val title       = document.selectFirst("div.title h1")?.text()?.substringBefore(" izle") ?: return null
-            val poster      = getPosterUrl(document.selectFirst("div.category_image img")) ?: return null
+            val title       = document.selectFirst("div.title h1")?.text()?.substringBefore(" izle") ?: throw Exception("Site yapısı değişmiş veya koruma var")
+            val poster      = getPosterUrl(document.selectFirst("div.category_image img")) ?: ""
             val year        = document.selectXpath("//div[span[contains(text(), 'Yapım Yılı')]]").text().substringAfter("Yapım Yılı : ").trim().toIntOrNull()
             val description = document.selectFirst("div.category_desc")?.text()?.trim()
             val tags        = document.select("div.genres a").mapNotNull { it.text().trim() }

@@ -81,7 +81,7 @@ class FilmModu : MainAPI() {
         return safeLoad(FilmModuPlugin.appContext, this.name, url) {
             val document = app.get(url).document
 
-            val orgTitle    = document.selectFirst("div.titles h1")?.text()?.trim() ?: return null
+            val orgTitle    = document.selectFirst("div.titles h1")?.text()?.trim() ?: throw Exception("Site yapısı değişmiş veya koruma var")
             val altTitle    = document.selectFirst("div.titles h2")?.text()?.trim() ?: ""
             val title       = if (altTitle.isNotEmpty()) "$orgTitle - $altTitle" else orgTitle
             val poster      = fixUrlNull(document.selectFirst("img.img-responsive")?.attr("src"))

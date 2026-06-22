@@ -107,7 +107,7 @@ class SetFilmIzle : MainAPI() {
         return safeLoad(SetFilmIzlePlugin.appContext, this.name, url) {
             val document = app.get(url).document
 
-            val title           = document.selectFirst("h1")?.text()?.substringBefore(" izle")?.trim() ?: return null
+            val title           = document.selectFirst("h1")?.text()?.substringBefore(" izle")?.trim() ?: throw Exception("Site yapısı değişmiş veya koruma var")
             val poster          = fixUrlNull(document.selectFirst("div.poster img")?.attr("src"))
             val description     = document.selectFirst("div.wp-content p")?.text()?.trim()
             var year            = document.selectFirst("div.extra span.C a")?.text()?.trim()?.toIntOrNull()

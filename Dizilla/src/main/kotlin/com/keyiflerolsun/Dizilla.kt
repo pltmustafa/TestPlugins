@@ -364,7 +364,7 @@ class Dizilla : MainAPI() {
         try {
             val mainReq = app.get(url, interceptor = interceptor)
             val document = mainReq.document
-            val title = document.selectFirst("div.poster.poster h2")?.text() ?: return null
+            val title = document.selectFirst("div.poster.poster h2")?.text() ?: throw Exception("Site yapısı değişmiş veya koruma var")
             val poster = fixPosterUrl(fixUrlNull(document.selectFirst("div.w-full.page-top.relative img")?.attr("src")))
             val year =
                 document.select("div.w-fit.min-w-fit")[1].selectFirst("span.text-sm.opacity-60")?.text()

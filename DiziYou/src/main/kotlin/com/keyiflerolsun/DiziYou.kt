@@ -118,7 +118,7 @@ class DiziYou : MainAPI() {
         return safeLoad(DiziYouPlugin.appContext, this.name, url) {
             val document = app.get(url).document
 
-            val title           = document.selectFirst("h1")?.text()?.trim() ?: return null
+            val title           = document.selectFirst("h1")?.text()?.trim() ?: throw Exception("Site yapısı değişmiş veya koruma var")
             val poster          = fixUrlNull(document.selectFirst("div.category_image img")?.attr("src"))
             val description     = document.selectFirst("div.diziyou_desc")?.ownText()?.trim()
             val year            = document.selectFirst("span.dizimeta:contains(Yapım Yılı)")?.nextSibling()?.toString()?.trim()?.toIntOrNull()
