@@ -132,7 +132,13 @@ class PLTStream : MainAPI() {
         val title = item.title ?: item.name ?: return null
         val poster = if (item.poster_path != null) "$imageBaseUrl${item.poster_path}" else null
         val background = if (item.backdrop_path != null) "https://image.tmdb.org/t/p/original${item.backdrop_path}" else null
-        val plot = item.overview
+        var plot = item.overview
+        if (plot.isNullOrBlank()) {
+            val enUrl = "$mainUrl/${meta.type}/${meta.id}?api_key=$apiKey&language=en-US"
+            val enResponse = app.get(enUrl).text
+            val enItem = parseJson<TmdbDetails>(enResponse)
+            plot = enItem.overview
+        }
         val year = (item.release_date ?: item.first_air_date)?.split("-")?.firstOrNull()?.toIntOrNull()
         val imdbId = item.external_ids?.imdb_id ?: item.imdb_id
 
@@ -163,7 +169,7 @@ class PLTStream : MainAPI() {
         }
         val isComingSoon = statusStr?.lowercase() in listOf("rumored", "planned", "in production", "post production", "pilot", "upcoming")
         
-        val plotWithStatus = if (statusTranslated != null && !plot.isNullOrBlank()) "Durum: $statusTranslated\n\n$plot" else plot
+
 
         val recs = item.recommendations?.results?.mapNotNull { rec ->
             val recTitle = rec.title ?: rec.name ?: return@mapNotNull null
@@ -188,7 +194,7 @@ class PLTStream : MainAPI() {
                 this.posterUrl = poster
                 this.backgroundPosterUrl = background
                 this.year = year
-                this.plot = plotWithStatus
+                this.plot = plot
                 this.tags = tags
                 this.duration = duration
                 this.score = scoreObj
@@ -248,7 +254,7 @@ class PLTStream : MainAPI() {
                 this.posterUrl = poster
                 this.backgroundPosterUrl = background
                 this.year = year
-                this.plot = plotWithStatus
+                this.plot = plot
                 this.tags = tags
                 this.duration = duration
                 this.score = scoreObj
