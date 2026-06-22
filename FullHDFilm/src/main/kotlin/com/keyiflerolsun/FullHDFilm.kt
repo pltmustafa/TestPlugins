@@ -177,9 +177,11 @@ class FullHDFilm : MainAPI() {
         try {
         var _linksFound = 0
         val _callback: (ExtractorLink) -> Unit = { link ->
-            _linksFound++
-            callback.invoke(link)
-        }
+            if (link.url.isNotBlank()) {
+    _linksFound++
+    callback.invoke(link)
+}
+}
             val headers = mapOf(
                 "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
                 "Referer" to mainUrl

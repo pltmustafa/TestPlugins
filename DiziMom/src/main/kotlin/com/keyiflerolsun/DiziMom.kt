@@ -141,9 +141,11 @@ class DiziMom : MainAPI() {
         try {
         var _linksFound = 0
         val _callback: (ExtractorLink) -> Unit = { link ->
-            _linksFound++
-            callback.invoke(link)
-        }
+            if (link.url.isNotBlank()) {
+    _linksFound++
+    callback.invoke(link)
+}
+}
             Log.d("DZM", "data » $data")
 
             val ua = mapOf("User-Agent" to "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36")

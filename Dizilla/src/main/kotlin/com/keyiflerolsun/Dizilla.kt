@@ -418,9 +418,11 @@ class Dizilla : MainAPI() {
         try {
         var _linksFound = 0
         val _callback: (ExtractorLink) -> Unit = { link ->
-            _linksFound++
-            callback.invoke(link)
-        }
+            if (link.url.isNotBlank()) {
+    _linksFound++
+    callback.invoke(link)
+}
+}
             val document = app.get(data, interceptor = interceptor).document
             val script = document.selectFirst("script#__NEXT_DATA__")?.data() ?: throw Exception("Gerekli veri bulunamadı")
 

@@ -266,9 +266,11 @@ class KekikStream : MainAPI() {
         try {
         var _linksFound = 0
         val _callback: (ExtractorLink) -> Unit = { link ->
-            _linksFound++
-            callback.invoke(link)
-        }
+            if (link.url.isNotBlank()) {
+    _linksFound++
+    callback.invoke(link)
+}
+}
             val queryPart = data.substringAfter("?", "")
             val queryParams = queryPart.split("&").associate { 
                 val parts = it.split("=")

@@ -259,9 +259,11 @@ class DiziPal : MainAPI() {
         try {
         var _linksFound = 0
         val _callback: (ExtractorLink) -> Unit = { link ->
-            _linksFound++
-            callback.invoke(link)
-        }
+            if (link.url.isNotBlank()) {
+    _linksFound++
+    callback.invoke(link)
+}
+}
             Log.d("DiziPal", "--> loadLinks ÇAĞRILDI. Gelen URL: $data")
             val doc = app.get(data).document
             

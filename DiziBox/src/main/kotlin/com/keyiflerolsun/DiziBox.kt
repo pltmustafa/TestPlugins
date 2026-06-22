@@ -282,9 +282,11 @@ private fun Element.toMainPageResult(): SearchResponse? {
         try {
         var _linksFound = 0
         val _callback: (ExtractorLink) -> Unit = { link ->
-            _linksFound++
-            callback.invoke(link)
-        }
+            if (link.url.isNotBlank()) {
+    _linksFound++
+    callback.invoke(link)
+}
+}
             Log.d("DZBX", "data » $data")
             val document = app.get(
                 data,

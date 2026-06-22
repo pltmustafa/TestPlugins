@@ -169,9 +169,11 @@ class DiziBal : MainAPI() {
         try {
         var _linksFound = 0
         val _callback: (ExtractorLink) -> Unit = { link ->
-            _linksFound++
-            callback.invoke(link)
-        }
+            if (link.url.isNotBlank()) {
+    _linksFound++
+    callback.invoke(link)
+}
+}
             var streamUrl = data
 
             if (data.startsWith("$apiUrl/series/")) {

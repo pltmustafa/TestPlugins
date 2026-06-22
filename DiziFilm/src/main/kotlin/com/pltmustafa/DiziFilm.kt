@@ -218,9 +218,11 @@ class DiziFilm : MainAPI() {
         try {
         var _linksFound = 0
         val _callback: (ExtractorLink) -> Unit = { link ->
-            _linksFound++
-            callback.invoke(link)
-        }
+            if (link.url.isNotBlank()) {
+    _linksFound++
+    callback.invoke(link)
+}
+}
             Log.e("DiziFilm", "loadLinks called with data: $data")
             val html = app.get(data).text
             Log.e("DiziFilm", "loadLinks html length: ${html.length}")

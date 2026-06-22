@@ -165,9 +165,11 @@ class WebteIzle : MainAPI() {
         try {
         var _linksFound = 0
         val _callback: (ExtractorLink) -> Unit = { link ->
-            _linksFound++
-            callback.invoke(link)
-        }
+            if (link.url.isNotBlank()) {
+    _linksFound++
+    callback.invoke(link)
+}
+}
             Log.d("WBTI", "data » $data")
             val response = app.get(data)
             val document = response.document

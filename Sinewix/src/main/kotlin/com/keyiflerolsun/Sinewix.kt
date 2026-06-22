@@ -121,9 +121,11 @@ class Sinewix : MainAPI() {
         try {
         var _linksFound = 0
         val _callback: (ExtractorLink) -> Unit = { link ->
-            _linksFound++
-            callback.invoke(link)
-        }
+            if (link.url.isNotBlank()) {
+    _linksFound++
+    callback.invoke(link)
+}
+}
             if (data.isBlank()) throw Exception("Gerekli veri bulunamadı")
             loadExtractor(data, subtitleCallback, _callback)
             if (_linksFound == 0) throw Exception("Sayfada hiçbir link bulunamadı, site yapısı değişmiş olabilir.")

@@ -236,9 +236,11 @@ class YabanciDizi : MainAPI() {
         try {
         var _linksFound = 0
         val _callback: (ExtractorLink) -> Unit = { link ->
-            _linksFound++
-            callback.invoke(link)
-        }
+            if (link.url.isNotBlank()) {
+    _linksFound++
+    callback.invoke(link)
+}
+}
             Log.d("YBD", "data » ${data}")
             val document = app.get(data).document
             val timestampMillis = (System.currentTimeMillis() - 50000)
