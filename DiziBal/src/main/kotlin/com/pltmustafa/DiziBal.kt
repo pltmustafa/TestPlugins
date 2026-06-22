@@ -1,5 +1,7 @@
 package com.pltmustafa
 
+import com.pltmustafa.common.ErrorUtils
+import com.pltmustafa.common.safeLoadLinks
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -166,14 +168,7 @@ class DiziBal : MainAPI() {
     }
 
     override suspend fun loadLinks(data: String, isCasting: Boolean, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit): Boolean {
-        try {
-        var _linksFound = 0
-        val _callback: (ExtractorLink) -> Unit = { link ->
-            if (link.url.isNotBlank()) {
-    _linksFound++
-    callback.invoke(link)
-}
-}
+        return safeLoadLinks(DiziBalPlugin.appContext, this.name, data, callback) { safeCallback ->
             var streamUrl = data
 
             if (data.startsWith("$apiUrl/series/")) {
@@ -217,7 +212,7 @@ class DiziBal : MainAPI() {
                         println("DiziBal Extractor urlToStream: $urlToStream")
                         
                         if (urlToStream != null && urlToStream.isNotBlank()) {
-                            _callback(newExtractorLink(
+                            safeCallback(newExtractorLink(
                                 source = "DiziBal",
                                 name = "DiziBal HD",
                                 url = urlToStream,
@@ -241,23 +236,15 @@ class DiziBal : MainAPI() {
                             }
                         }
                     }
-        if (_linksFound == 0) throw Exception("Sayfada hiçbir link bulunamadı, site yapısı değişmiş olabilir.")
-        return true
                 } catch (e: Exception) {
                     println("DiziBal Extractor error: ${e.message}")
                     e.printStackTrace()
                 }
 
-                loadExtractor(streamUrl, subtitleCallback, callback)
-                return true
+                loadExtractor(streamUrl, subtitleCallback, safeCallback)
+            } else {
+                throw Exception("Gerekli veri bulunamadı")
             }
-            
-            throw Exception("Gerekli veri bulunamadı")
-        } catch (e: Exception) {
-            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                ErrorUtils.showPluginError(DiziBalPlugin.appContext, this.name, "LOAD_LINKS", data)
-            }, 500)
-            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 

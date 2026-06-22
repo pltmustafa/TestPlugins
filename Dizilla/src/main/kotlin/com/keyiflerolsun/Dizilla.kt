@@ -2,6 +2,8 @@
 
 package com.keyiflerolsun
 
+import com.pltmustafa.common.ErrorUtils
+import com.pltmustafa.common.safeLoadLinks
 import android.util.Base64
 import android.util.Log
 import com.fasterxml.jackson.databind.DeserializationFeature
@@ -415,14 +417,7 @@ class Dizilla : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        try {
-        var _linksFound = 0
-        val _callback: (ExtractorLink) -> Unit = { link ->
-            if (link.url.isNotBlank()) {
-    _linksFound++
-    callback.invoke(link)
-}
-}
+        return safeLoadLinks(DizillaPlugin.appContext, this.name, data, callback) { safeCallback ->
             val document = app.get(data, interceptor = interceptor).document
             val script = document.selectFirst("script#__NEXT_DATA__")?.data() ?: throw Exception("Gerekli veri bulunamadı")
 
@@ -469,7 +464,7 @@ class Dizilla : MainAPI() {
 
                     if (!finalUrl.isNullOrEmpty()) {
                         Log.d("DizillaDebug", "BİNGO! Regex ile Kırık Veriden Alınan Link: $finalUrl")
-                        loadExtractor(finalUrl, "$mainUrl/", subtitleCallback, _callback)
+                        loadExtractor(finalUrl, "$mainUrl/", subtitleCallback, safeCallback)
                         linkFound = true
                     }
                 }
@@ -479,15 +474,6 @@ class Dizilla : MainAPI() {
                 Log.e("DizillaDebug", "HATA: Regex taraması link bulamadı. Ham Veri: ${decodedData.take(500)}")
             }
 
-            return linkFound
-        if (_linksFound == 0) throw Exception("Sayfada hiçbir link bulunamadı, site yapısı değişmiş olabilir.")
-        return true
-
-        } catch (e: Exception) {
-            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                ErrorUtils.showPluginError(DizillaPlugin.appContext, this.name, "LOAD_LINKS", data)
-            }, 500)
-            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 

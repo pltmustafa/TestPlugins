@@ -1,5 +1,7 @@
 package com.pltmustafa
 
+import com.pltmustafa.common.ErrorUtils
+import com.pltmustafa.common.safeLoadLinks
 import android.util.Log
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -215,14 +217,7 @@ class DiziFilm : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        try {
-        var _linksFound = 0
-        val _callback: (ExtractorLink) -> Unit = { link ->
-            if (link.url.isNotBlank()) {
-    _linksFound++
-    callback.invoke(link)
-}
-}
+        return safeLoadLinks(DiziFilmPlugin.appContext, this.name, data, callback) { safeCallback ->
             Log.e("DiziFilm", "loadLinks called with data: $data")
             val html = app.get(data).text
             Log.e("DiziFilm", "loadLinks html length: ${html.length}")
@@ -244,12 +239,10 @@ class DiziFilm : MainAPI() {
                                 } else {
                                     val name = "Server ${part.language ?: ""} ${part.quality ?: ""}".trim()
                                     Log.d("DiziFilm", "Found other URL for movie: ${part.url}")
-                                    loadExtractor(part.url, "$mainUrl/", subtitleCallback, _callback)
+                                    loadExtractor(part.url, "$mainUrl/", subtitleCallback, safeCallback)
                                 }
                             }
                         }
-        if (_linksFound == 0) throw Exception("Sayfada hiçbir link bulunamadı, site yapısı değişmiş olabilir.")
-        return true
                     } catch(e: Exception) {
                         Log.e("DiziFilm", "loadLinks movie parse error", e)
                     }
@@ -362,13 +355,6 @@ class DiziFilm : MainAPI() {
                     Log.e("DiziFilm", "Vidlop extractor error for $vidlopUrl", e)
                 }
             }
-
-            return true
-        } catch (e: Exception) {
-            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                ErrorUtils.showPluginError(DiziFilmPlugin.appContext, this.name, "LOAD_LINKS", data)
-            }, 500)
-            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
     

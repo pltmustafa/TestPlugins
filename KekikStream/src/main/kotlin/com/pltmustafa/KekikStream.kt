@@ -1,5 +1,7 @@
 package com.pltmustafa
 
+import com.pltmustafa.common.ErrorUtils
+import com.pltmustafa.common.safeLoadLinks
 import android.util.Log
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.databind.DeserializationFeature
@@ -263,14 +265,7 @@ class KekikStream : MainAPI() {
     }
 
     override suspend fun loadLinks(data: String, isCasting: Boolean, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit): Boolean {
-        try {
-        var _linksFound = 0
-        val _callback: (ExtractorLink) -> Unit = { link ->
-            if (link.url.isNotBlank()) {
-    _linksFound++
-    callback.invoke(link)
-}
-}
+        return safeLoadLinks(KekikStreamPlugin.appContext, this.name, data, callback) { safeCallback ->
             val queryPart = data.substringAfter("?", "")
             val queryParams = queryPart.split("&").associate { 
                 val parts = it.split("=")
@@ -318,8 +313,6 @@ class KekikStream : MainAPI() {
                         val uri = java.net.URI(ref)
                         val origin = "${uri.scheme}://${uri.host}"
                         customHeaders["Origin"] = origin
-        if (_linksFound == 0) throw Exception("Sayfada hiçbir link bulunamadı, site yapısı değişmiş olabilir.")
-        return true
                     } catch (e: Exception) {}
                 }
                 
@@ -349,12 +342,6 @@ class KekikStream : MainAPI() {
                     )
                 }
             }
-            return true
-        } catch (e: Exception) {
-            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                ErrorUtils.showPluginError(KekikStreamPlugin.appContext, this.name, "LOAD_LINKS", data)
-            }, 500)
-            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 

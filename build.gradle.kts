@@ -60,6 +60,12 @@ subprojects {
             targetCompatibility = JavaVersion.VERSION_1_8
         }
 
+        sourceSets {
+            getByName("main") {
+                java.srcDirs(file("$rootDir/common/src/main/kotlin"))
+            }
+        }
+
         tasks.withType<KotlinJvmCompile> {
             compilerOptions {
                 jvmTarget.set(JvmTarget.JVM_1_8) // Required

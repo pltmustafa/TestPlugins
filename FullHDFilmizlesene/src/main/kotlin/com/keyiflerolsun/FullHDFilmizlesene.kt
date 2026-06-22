@@ -2,6 +2,8 @@
 
 package com.keyiflerolsun
 
+import com.pltmustafa.common.ErrorUtils
+import com.pltmustafa.common.safeLoadLinks
 import android.util.Log
 import android.util.Base64
 import org.jsoup.nodes.Element
@@ -181,14 +183,7 @@ class FullHDFilmizlesene : MainAPI() {
     }
 
     override suspend fun loadLinks(data: String, isCasting: Boolean, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit): Boolean {
-        try {
-        var _linksFound = 0
-        val _callback: (ExtractorLink) -> Unit = { link ->
-            if (link.url.isNotBlank()) {
-    _linksFound++
-    callback.invoke(link)
-}
-}
+        return safeLoadLinks(FullHDFilmizlesenePlugin.appContext, this.name, data, callback) { safeCallback ->
             Log.d("FHD", "data » $data")
             val document    = app.get(data).document
             val videoLinks = getVideoLinks(document)
@@ -200,20 +195,12 @@ class FullHDFilmizlesene : MainAPI() {
                 for ((key, value) in videoMap) {
                     val videoUrl = fixUrlNull(value) ?: continue
                     if (videoUrl.contains("turbo.imgz.me")) {
-                        loadExtractor("${key}||${videoUrl}", "${mainUrl}/", subtitleCallback, _callback)
+                        loadExtractor("${key}||${videoUrl}", "${mainUrl}/", subtitleCallback, safeCallback)
                     } else {
-                        loadExtractor(videoUrl, "${mainUrl}/", subtitleCallback, _callback)
+                        loadExtractor(videoUrl, "${mainUrl}/", subtitleCallback, safeCallback)
                     }
                 }
             }
-
-            if (_linksFound == 0) throw Exception("Sayfada hiçbir link bulunamadı, site yapısı değişmiş olabilir.")
-        return true
-        } catch (e: Exception) {
-            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                ErrorUtils.showPluginError(FullHDFilmizlesenePlugin.appContext, this.name, "LOAD_LINKS", data)
-            }, 500)
-            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 

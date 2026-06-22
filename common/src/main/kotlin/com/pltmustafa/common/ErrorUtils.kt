@@ -1,8 +1,9 @@
-package com.pltmustafa
+package com.pltmustafa.common
 
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 
 object ErrorUtils {
     private var isDialogShowing = false
@@ -167,20 +168,25 @@ object ErrorUtils {
 
                 webView.loadDataWithBaseURL(null, htmlTemplate, "text/html", "UTF-8", null)
 
+                Log.d("ErrorUtils", "[$pluginName] Building AlertDialog...")
                 dialog = android.app.AlertDialog.Builder(context, android.R.style.Theme_DeviceDefault_Dialog_NoActionBar)
                     .setView(webView)
                     .setCancelable(true)
                     .create()
 
                 dialog.setOnDismissListener {
+                    Log.d("ErrorUtils", "[$pluginName] Dialog dismissed.")
                     isDialogShowing = false
                 }
 
                 dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+                Log.d("ErrorUtils", "[$pluginName] Showing dialog...")
                 dialog.show()
+                Log.d("ErrorUtils", "[$pluginName] Dialog shown successfully.")
 
             } catch (e: Exception) {
                 isDialogShowing = false
+                Log.e("ErrorUtils", "[$pluginName] Failed to show dialog: ${e.message}", e)
                 android.widget.Toast.makeText(context, "Bilinmeyen bir hata oluştu.", android.widget.Toast.LENGTH_LONG).show()
             }
         }

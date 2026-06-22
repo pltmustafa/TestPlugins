@@ -1,5 +1,7 @@
 package com.nikyokki
 
+import com.pltmustafa.common.ErrorUtils
+import com.pltmustafa.common.safeLoadLinks
 import Video
 import android.util.Log
 import com.fasterxml.jackson.annotation.JsonProperty
@@ -231,28 +233,13 @@ class HDFilmIzle : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        try {
-        var _linksFound = 0
-        val _callback: (ExtractorLink) -> Unit = { link ->
-            if (link.url.isNotBlank()) {
-    _linksFound++
-    callback.invoke(link)
-}
-}
+        return safeLoadLinks(HDFilmIzlePlugin.appContext, this.name, data, callback) { safeCallback ->
             Log.d("HDF", "data » ${data}")
             val document = app.get(data).document
 
             val iframe = document.selectFirst("iframe")?.attr("data-src") ?: ""
             Log.d("HDF", "iframe » ${iframe}")
-            loadExtractor(iframe, mainUrl, subtitleCallback, _callback)
-
-            if (_linksFound == 0) throw Exception("Sayfada hiçbir link bulunamadı, site yapısı değişmiş olabilir.")
-        return true
-        } catch (e: Exception) {
-            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                ErrorUtils.showPluginError(HDFilmIzlePlugin.appContext, this.name, "LOAD_LINKS", data)
-            }, 500)
-            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
+            loadExtractor(iframe, mainUrl, subtitleCallback, safeCallback)
         }
     }
 

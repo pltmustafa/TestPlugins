@@ -2,6 +2,8 @@
 
 package com.keyiflerolsun
 
+import com.pltmustafa.common.ErrorUtils
+import com.pltmustafa.common.safeLoadLinks
 import android.util.Log
 import org.jsoup.nodes.Element
 import com.lagradost.cloudstream3.*
@@ -138,14 +140,7 @@ class DiziMom : MainAPI() {
     }
 
     override suspend fun loadLinks(data: String, isCasting: Boolean, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit): Boolean {
-        try {
-        var _linksFound = 0
-        val _callback: (ExtractorLink) -> Unit = { link ->
-            if (link.url.isNotBlank()) {
-    _linksFound++
-    callback.invoke(link)
-}
-}
+        return safeLoadLinks(DiziMomPlugin.appContext, this.name, data, callback) { safeCallback ->
             Log.d("DZM", "data » $data")
 
             val ua = mapOf("User-Agent" to "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36")
@@ -177,16 +172,8 @@ class DiziMom : MainAPI() {
 
             for (iframe in iframes) {
                 Log.d("DZM", "iframe » $iframe")
-                loadExtractor(iframe, "${mainUrl}/", subtitleCallback, _callback)
+                loadExtractor(iframe, "${mainUrl}/", subtitleCallback, safeCallback)
             }
-
-            if (_linksFound == 0) throw Exception("Sayfada hiçbir link bulunamadı, site yapısı değişmiş olabilir.")
-        return true
-        } catch (e: Exception) {
-            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                ErrorUtils.showPluginError(DiziMomPlugin.appContext, this.name, "LOAD_LINKS", data)
-            }, 500)
-            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 

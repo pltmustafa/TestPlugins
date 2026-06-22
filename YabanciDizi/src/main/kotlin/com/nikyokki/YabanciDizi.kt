@@ -1,5 +1,7 @@
 package com.nikyokki
 
+import com.pltmustafa.common.ErrorUtils
+import com.pltmustafa.common.safeLoadLinks
 import CryptoJS
 import android.util.Log
 import com.lagradost.cloudstream3.Actor
@@ -233,14 +235,7 @@ class YabanciDizi : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        try {
-        var _linksFound = 0
-        val _callback: (ExtractorLink) -> Unit = { link ->
-            if (link.url.isNotBlank()) {
-    _linksFound++
-    callback.invoke(link)
-}
-}
+        return safeLoadLinks(YabanciDiziPlugin.appContext, this.name, data, callback) { safeCallback ->
             Log.d("YBD", "data » ${data}")
             val document = app.get(data).document
             val timestampMillis = (System.currentTimeMillis() - 50000)
@@ -296,10 +291,10 @@ class YabanciDizi : MainAPI() {
                                         Log.d("YBD", "drives sonrası da boş!")
                                         return@forEach
                                     }
-                                    loadMac(subFrame, _callback, dilAd)
+                                    loadMac(subFrame, safeCallback, dilAd)
                                 } else {
                                     Log.d("YBD", "Mac subFrame dolu, devam")
-                                    loadMac(subFrame, _callback, dilAd)
+                                    loadMac(subFrame, safeCallback, dilAd)
                                 }
 
                             } else if (name.contains("VidMoly")) {
@@ -313,7 +308,7 @@ class YabanciDizi : MainAPI() {
                                 Log.d("YBD", "Vidmoly subFrame -> $subFrame")
                                 if (subFrame.isNotEmpty()) {
                                     loadExtractor(subFrame, "${mainUrl}/", subtitleCallback) { link ->
-                                        _callback.invoke(link)
+                                        safeCallback.invoke(link)
                                     }
                                 } else {
                                     Log.d("YBD", "VidMoly iframe bulunamadı!")
@@ -329,14 +324,13 @@ class YabanciDizi : MainAPI() {
                                 Log.d("YBD", "Okru subFrame -> $subFrame")
                                 if (subFrame.isNotEmpty()) {
                                     loadExtractor(subFrame, "${mainUrl}/", subtitleCallback) { link ->
-                                        _callback.invoke(link)
+                                        safeCallback.invoke(link)
                                     }
                                 } else {
                                     Log.d("YBD", "Okru iframe bulunamadı!")
                                 }
                             }
-        if (_linksFound == 0) throw Exception("Sayfada hiçbir link bulunamadı, site yapısı değişmiş olabilir.")
-        return true
+
                         } catch (e: Exception) {
                             Log.e("YBD", "Host: $name işlenirken hata: ${e.message}", e)
                         }
@@ -345,13 +339,6 @@ class YabanciDizi : MainAPI() {
                     Log.e("YBD", "Tab: $dataEid işlenirken hata: ${e.message}", e)
                 }
             }
-
-            return true
-        } catch (e: Exception) {
-            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                ErrorUtils.showPluginError(YabanciDiziPlugin.appContext, this.name, "LOAD_LINKS", data)
-            }, 500)
-            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 

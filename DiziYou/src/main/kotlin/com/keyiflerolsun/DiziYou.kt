@@ -2,6 +2,8 @@
 
 package com.keyiflerolsun
 
+import com.pltmustafa.common.ErrorUtils
+import com.pltmustafa.common.safeLoadLinks
 import android.util.Log
 import org.jsoup.nodes.Element
 import com.lagradost.cloudstream3.*
@@ -153,14 +155,7 @@ class DiziYou : MainAPI() {
     }
 
     override suspend fun loadLinks(data: String, isCasting: Boolean, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit): Boolean {
-        try {
-        var _linksFound = 0
-        val _callback: (ExtractorLink) -> Unit = { link ->
-            if (link.url.isNotBlank()) {
-    _linksFound++
-    callback.invoke(link)
-}
-}
+        return safeLoadLinks(DiziYouPlugin.appContext, this.name, data, callback) { safeCallback ->
             Log.d("DZY", "data » $data")
             val document = app.get(data).document
 
@@ -199,7 +194,7 @@ class DiziYou : MainAPI() {
             }
 
             for (stream in streamUrls) {
-                _callback.invoke(
+                safeCallback.invoke(
                  newExtractorLink(
                     source = this.name,
                     name = this.name,
@@ -211,14 +206,6 @@ class DiziYou : MainAPI() {
                 }
                 )
             }
-
-            if (_linksFound == 0) throw Exception("Sayfada hiçbir link bulunamadı, site yapısı değişmiş olabilir.")
-        return true
-        } catch (e: Exception) {
-            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                ErrorUtils.showPluginError(DiziYouPlugin.appContext, this.name, "LOAD_LINKS", data)
-            }, 500)
-            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 

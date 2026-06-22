@@ -1,5 +1,7 @@
 package com.nikyokki
 
+import com.pltmustafa.common.ErrorUtils
+import com.pltmustafa.common.safeLoadLinks
 import android.util.Log
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -329,14 +331,7 @@ class SelcukFlix : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        try {
-        var _linksFound = 0
-        val _callback: (ExtractorLink) -> Unit = { link ->
-            if (link.url.isNotBlank()) {
-    _linksFound++
-    callback.invoke(link)
-}
-}
+        return safeLoadLinks(SelcukFlixPlugin.appContext, this.name, data, callback) { safeCallback ->
             Log.d("SFX", "data » $data")
             val objectMapper = ObjectMapper().registerModule(KotlinModule.Builder().build())
             objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
@@ -380,16 +375,8 @@ class SelcukFlix : MainAPI() {
             iframes.forEach { it ->
                 val iframe = fixUrlNull(Jsoup.parse(it.sourceContent).select("iframe").attr("src"))
                 Log.d("SFX", "iframe » $iframe")
-                loadExtractor(iframe!!, "${mainUrl}/", subtitleCallback, _callback)
+                loadExtractor(iframe!!, "${mainUrl}/", subtitleCallback, safeCallback)
             }
-
-            if (_linksFound == 0) throw Exception("Sayfada hiçbir link bulunamadı, site yapısı değişmiş olabilir.")
-        return true
-        } catch (e: Exception) {
-            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                ErrorUtils.showPluginError(SelcukFlixPlugin.appContext, this.name, "LOAD_LINKS", data)
-            }, 500)
-            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 }

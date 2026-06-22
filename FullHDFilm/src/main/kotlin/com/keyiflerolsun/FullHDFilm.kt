@@ -2,6 +2,8 @@
 
 package com.keyiflerolsun
 
+import com.pltmustafa.common.ErrorUtils
+import com.pltmustafa.common.safeLoadLinks
 import android.util.Base64
 import android.util.Log
 import com.lagradost.cloudstream3.*
@@ -174,14 +176,7 @@ class FullHDFilm : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        try {
-        var _linksFound = 0
-        val _callback: (ExtractorLink) -> Unit = { link ->
-            if (link.url.isNotBlank()) {
-    _linksFound++
-    callback.invoke(link)
-}
-}
+        return safeLoadLinks(FullHDFilmPlugin.appContext, this.name, data, callback) { safeCallback ->
             val headers = mapOf(
                 "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
                 "Referer" to mainUrl
@@ -239,8 +234,6 @@ class FullHDFilm : MainAPI() {
                                 subtitleCallback(com.lagradost.cloudstream3.SubtitleFile("Türkçe", subtitleUrl))
                                 Log.d("FHDF", "Subtitle added: $subtitleUrl")
                             }
-        if (_linksFound == 0) throw Exception("Sayfada hiçbir link bulunamadı, site yapısı değişmiş olabilir.")
-        return true
                         } catch (e: Exception) {
                             Log.d("FHDF", "Subtitle URL error: ${e.message}")
                         }
@@ -290,13 +283,6 @@ class FullHDFilm : MainAPI() {
                     Log.e("FHDF", "Error loading links for $pageUrl", e)
                 }
             }
-
-            return foundLinks
-        } catch (e: Exception) {
-            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                ErrorUtils.showPluginError(FullHDFilmPlugin.appContext, this.name, "LOAD_LINKS", data)
-            }, 500)
-            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
         }
     }
 }

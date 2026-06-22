@@ -2,6 +2,8 @@
 
 package com.keyiflerolsun
 
+import com.pltmustafa.common.ErrorUtils
+import com.pltmustafa.common.safeLoadLinks
 import android.util.Log
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.databind.DeserializationFeature
@@ -345,7 +347,7 @@ override suspend fun loadLinks(
     subtitleCallback: (SubtitleFile) -> Unit,
     callback: (ExtractorLink) -> Unit
 ): Boolean {
-    try {
+    return safeLoadLinks(HDFilmCehennemiPlugin.appContext, this.name, data, callback) { safeCallback ->
         Log.d("HDCH_Extractor", "loadLinks processing: $data")
         val document = app.get(data, interceptor = interceptor).document
         
@@ -398,13 +400,6 @@ override suspend fun loadLinks(
             throw Exception("Sayfada hiçbir link bulunamadı, site yapısı değişmiş olabilir.")
         }
         
-        return true
-    } catch (e: Exception) {
-        Log.e("HDCH_Extractor", "loadLinks error: ${e.message}")
-        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-            ErrorUtils.showPluginError(HDFilmCehennemiPlugin.appContext, this.name, "LOAD_LINKS", data)
-        }, 500)
-        throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
     }
 }
     private data class SubSource(

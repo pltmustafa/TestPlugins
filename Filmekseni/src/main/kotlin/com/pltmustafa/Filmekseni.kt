@@ -1,5 +1,7 @@
 package com.pltmustafa
 
+import com.pltmustafa.common.ErrorUtils
+import com.pltmustafa.common.safeLoadLinks
 import android.util.Base64
 import android.util.Log
 import com.lagradost.cloudstream3.*
@@ -185,14 +187,7 @@ class Filmekseni : MainAPI() {
     }
 
     override suspend fun loadLinks(data: String, isCasting: Boolean, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit): Boolean {
-        try {
-        var _linksFound = 0
-        val _callback: (ExtractorLink) -> Unit = { link ->
-            if (link.url.isNotBlank()) {
-    _linksFound++
-    callback.invoke(link)
-}
-}
+        return safeLoadLinks(FilmekseniPlugin.appContext, this.name, data, callback) { safeCallback ->
             Log.d("Filmekseni", "loadLinks() called with data: $data")
             val html = app.get(data).document.outerHtml()
             
@@ -229,7 +224,7 @@ class Filmekseni : MainAPI() {
                                 if (m3u8Match != null) {
                                     val m3u8Url = if (m3u8Match.groupValues[1].startsWith("http")) m3u8Match.groupValues[1] else parsedDomain + m3u8Match.groupValues[1]
                                     Log.d("Filmekseni", "Found m3u8: $m3u8Url")
-                                    _callback.invoke(
+                                    safeCallback.invoke(
                                         newExtractorLink(
                                             source = this.name,
                                             name = "Vidload",
@@ -253,14 +248,14 @@ class Filmekseni : MainAPI() {
                                 } else {
                                     Log.d("Filmekseni", "m3u8 not found in iframe HTML")
                                 }
-        if (_linksFound == 0) throw Exception("Sayfada hiçbir link bulunamadı, site yapısı değişmiş olabilir.")
-        return true
                             } catch (e: Exception) {
                                 Log.e("Filmekseni", "Error fetching iframe: ${e.message}")
                             }
                         } else {
-                            Log.d("Filmekseni", "No iframe src found in decoded template")
+                            Log.d("Filmekseni", "No iframe src found in decoded template. Template: $decodedTemplate")
                         }
+                    } else {
+                        Log.d("Filmekseni", "Link or template is null in object")
                     }
                 }
             } else {
@@ -271,12 +266,7 @@ class Filmekseni : MainAPI() {
                 }
             }
             
-            return true
-        } catch (e: Exception) {
-            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                ErrorUtils.showPluginError(FilmekseniPlugin.appContext, this.name, "LOAD_LINKS", data)
-            }, 500)
-            throw com.lagradost.cloudstream3.ErrorLoadingException("Hata oluştu.")
+            Log.d("Filmekseni", "loadLinks tamamlandı")
         }
     }
 }
