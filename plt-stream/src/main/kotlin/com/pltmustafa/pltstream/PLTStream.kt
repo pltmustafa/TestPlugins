@@ -51,35 +51,17 @@ class PLTStream : MainAPI() {
     )
 
     override val mainPage = mainPageOf(
-        "trending/movie/day" to "Trend Filmler",
-        "trending/tv/day" to "Trend Diziler",
-        "movie/popular" to "Popüler Filmler",
-        "tv/popular" to "Popüler Diziler",
-        "movie/top_rated" to "En Çok Oy Alan Filmler",
-        "tv/top_rated" to "En Çok Oy Alan Diziler",
-        "movie/now_playing" to "Vizyondaki Filmler",
-        "movie/upcoming" to "Pek Yakında",
-        "tv/airing_today" to "Bugün Yayınlanan Diziler",
-        "tv/on_the_air" to "Yayında Olan Diziler",
-        "discover/movie?with_genres=28" to "Aksiyon Filmleri",
-        "discover/movie?with_genres=12" to "Macera Filmleri",
-        "discover/movie?with_genres=16" to "Animasyon Filmleri",
-        "discover/movie?with_genres=35" to "Komedi Filmleri",
-        "discover/movie?with_genres=80" to "Suç Filmleri",
-        "discover/movie?with_genres=99" to "Belgeseller",
-        "discover/movie?with_genres=18" to "Dram Filmleri",
-        "discover/movie?with_genres=10751" to "Aile Filmleri",
-        "discover/movie?with_genres=14" to "Fantastik Filmler",
-        "discover/movie?with_genres=36" to "Tarih Filmleri",
-        "discover/movie?with_genres=27" to "Korku Filmleri",
-        "discover/movie?with_genres=10402" to "Müzik Filmleri",
-        "discover/movie?with_genres=9648" to "Gizem Filmleri",
-        "discover/movie?with_genres=10749" to "Romantik Filmler",
-        "discover/movie?with_genres=878" to "Bilim Kurgu Filmleri",
-        "discover/movie?with_genres=10770" to "TV Filmleri",
-        "discover/movie?with_genres=53" to "Gerilim Filmleri",
-        "discover/movie?with_genres=10752" to "Savaş Filmleri",
-        "discover/movie?with_genres=37" to "Vahşi Batı Filmleri"
+        "discover/movie?with_watch_providers=8&watch_region=TR" to "Netflix Filmleri",
+        "discover/tv?with_watch_providers=8&watch_region=TR" to "Netflix Dizileri",
+        "discover/movie?with_watch_providers=337&watch_region=TR" to "Disney+ Filmleri",
+        "discover/tv?with_watch_providers=337&watch_region=TR" to "Disney+ Dizileri",
+        "discover/movie?with_watch_providers=119&watch_region=TR" to "Amazon Prime Filmleri",
+        "discover/tv?with_watch_providers=119&watch_region=TR" to "Amazon Prime Dizileri",
+        "discover/movie?with_watch_providers=2&watch_region=TR" to "Apple TV Filmleri",
+        "discover/movie?with_watch_providers=1899&watch_region=TR" to "HBO Max Filmleri",
+        "discover/tv?with_watch_providers=1899&watch_region=TR" to "HBO Max Dizileri",
+        "discover/movie?with_watch_providers=11&watch_region=TR" to "MUBI Filmleri",
+        "discover/tv?with_watch_providers=11&watch_region=TR" to "MUBI Dizileri"
     )
 
     override suspend fun getMainPage(
