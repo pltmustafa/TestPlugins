@@ -17,6 +17,7 @@ import com.pltmustafa.pltstream.extractors.YabanciDiziExtractor
 import com.pltmustafa.pltstream.extractors.DiziFilmExtractor
 import com.pltmustafa.pltstream.extractors.DizillaExtractor
 import com.pltmustafa.pltstream.extractors.DiziPalExtractor
+import com.pltmustafa.pltstream.extractors.DiziYoExtractor
 import com.pltmustafa.pltstream.extractors.DiziYouExtractor
 import com.pltmustafa.pltstream.extractors.SelcukFlixExtractor
 import com.pltmustafa.pltstream.extractors.SiteExtractor
@@ -45,6 +46,7 @@ class PLTStream : MainAPI() {
         DiziFilmExtractor(),
         DizillaExtractor(),
         DiziPalExtractor(),
+        DiziYoExtractor(),
         DiziYouExtractor(),
         SelcukFlixExtractor(),
         YabanciDiziExtractor()

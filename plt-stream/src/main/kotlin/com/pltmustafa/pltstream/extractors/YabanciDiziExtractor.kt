@@ -248,8 +248,8 @@ class YabanciDiziExtractor : SiteExtractor {
 
             callback.invoke(
                 ExtractorLink(
-                    source = "$dilAd - $name",
-                    name = "$dilAd - $name",
+                    source = dilAd,
+                    name = dilAd,
                     url = vidUrl,
                     referer = mainUrl,
                     quality = Qualities.Unknown.value,
@@ -275,8 +275,8 @@ class YabanciDiziExtractor : SiteExtractor {
                 
                 callback.invoke(
                     ExtractorLink(
-                        source = "$dilAd - $name -- $resolution",
-                        name = "$dilAd - $name -- $resolution",
+                        source = "$dilAd - $resolution",
+                        name = "$dilAd - $resolution",
                         url = link,
                         referer = vidUrl,
                         quality = getQualityFromName(resolution),
